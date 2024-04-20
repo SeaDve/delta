@@ -1,0 +1,13 @@
+[package]
+name = "delta"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+libp2p = { version = "0.53.2", features = ["full"] }
+tokio = { version = "1.37.0", features = ["full"] }
+serde = { version = "=1.0", features = ["derive"] }
+once_cell = "1.5"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
