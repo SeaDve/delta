@@ -16,8 +16,7 @@
           </object>
         </child>
         <child>
-          <object class="GtkButton" id="button">
-            <property name="label">Send Hi</property>
+          <object class="GtkEntry" id="entry">
           </object>
         </child>
       </object>

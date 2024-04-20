@@ -1,6 +1,7 @@
 #![allow(clippy::new_without_default)]
 
 mod application;
+mod client;
 mod ui;
 
 use gtk::{glib, prelude::*};
