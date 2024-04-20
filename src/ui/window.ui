@@ -19,6 +19,11 @@
           <object class="GtkEntry" id="entry">
           </object>
         </child>
+        <child>
+          <object class="GtkButton" id="button">
+            <property name="label">List All Peers</property>
+          </object>
+        </child>
       </object>
     </property>
   </template>

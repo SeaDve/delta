@@ -604,6 +604,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-channel 2.2.1",
+ "futures-channel",
  "futures-util",
  "gtk4",
  "libp2p",

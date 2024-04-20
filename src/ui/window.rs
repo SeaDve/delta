@@ -18,6 +18,8 @@ mod imp {
         pub(super) entry: TemplateChild<gtk::Entry>,
         #[template_child]
         pub(super) label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub(super) button: TemplateChild<gtk::Button>,
 
         pub(super) client: OnceCell<Client>,
     }
@@ -56,6 +58,13 @@ mod imp {
                     let text = entry.text();
                     glib::spawn_future_local(async move {
                         client.send_message(&text).await;
+                    });
+                }));
+
+            self.button
+                .connect_clicked(clone!(@weak obj, @weak client => move |_| {
+                    glib::spawn_future_local(async move {
+                        dbg!(client.list_peers().await);
                     });
                 }));
 

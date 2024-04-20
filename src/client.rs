@@ -4,6 +4,7 @@ use std::{
 };
 
 use anyhow::Result;
+use futures_channel::oneshot;
 use futures_util::{FutureExt, StreamExt};
 use gtk::{
     glib::{self, clone, closure_local},
@@ -13,7 +14,7 @@ use gtk::{
 use libp2p::{
     gossipsub, mdns,
     swarm::{NetworkBehaviour, SwarmEvent},
-    SwarmBuilder,
+    PeerId, SwarmBuilder,
 };
 
 mod imp {
@@ -82,11 +83,20 @@ impl Client {
     }
 
     pub async fn send_message(&self, message: &str) {
-        let imp = self.imp();
-
-        let command = Command::SendMessage {
+        self.send_command(Command::SendMessage {
             message: message.to_string(),
-        };
+        })
+        .await;
+    }
+
+    pub async fn list_peers(&self) -> Vec<PeerId> {
+        let (tx, rx) = oneshot::channel();
+        self.send_command(Command::ListPeers { tx }).await;
+        rx.await.unwrap()
+    }
+
+    async fn send_command(&self, command: Command) {
+        let imp = self.imp();
 
         let command_tx = imp.command_tx.get().unwrap();
         command_tx.send(command).await.unwrap();
@@ -141,6 +151,10 @@ impl Client {
                                 tracing::error!("Failed to send message: {:?}", err);
                             }
                         }
+                        Ok(Command::ListPeers {tx}) => {
+                            let peers = swarm.connected_peers().copied().collect::<Vec<_>>();
+                            tx.send(peers).unwrap();
+                        }
                         Err(err) => {
                             tracing::error!("Failed to receive command: {:?}", err);
                             break;
@@ -191,6 +205,7 @@ impl Client {
 
 enum Command {
     SendMessage { message: String },
+    ListPeers { tx: oneshot::Sender<Vec<PeerId>> },
 }
 
 #[derive(NetworkBehaviour)]
