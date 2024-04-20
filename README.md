@@ -8,3 +8,4 @@ Decentralized Land Transportation Assistant
 2. Install the following system dependencies via `dnf`:
    - `gtk4-devel`
    - `gcc`
+3. Use `run` to build and run the project.
