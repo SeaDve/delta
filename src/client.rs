@@ -1,7 +1,4 @@
-use std::{
-    hash::{DefaultHasher, Hash, Hasher},
-    time::Duration,
-};
+use std::time::Duration;
 
 use anyhow::Result;
 use futures_channel::oneshot;
@@ -112,13 +109,7 @@ impl Client {
             .with_async_std()
             .with_quic()
             .with_behaviour(|key| {
-                let gossipsub_config = gossipsub::ConfigBuilder::default()
-                    .message_id_fn(|message| {
-                        let mut hasher = DefaultHasher::new();
-                        message.data.hash(&mut hasher);
-                        gossipsub::MessageId::from(hasher.finish().to_string())
-                    })
-                    .build()?;
+                let gossipsub_config = gossipsub::ConfigBuilder::default().build()?;
 
                 let gossipsub = gossipsub::Behaviour::new(
                     gossipsub::MessageAuthenticity::Signed(key.clone()),

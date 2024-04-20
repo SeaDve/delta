@@ -56,6 +56,7 @@ mod imp {
             self.entry
                 .connect_activate(clone!(@weak obj, @weak client => move |entry| {
                     let text = entry.text();
+                    entry.set_text("");
                     glib::spawn_future_local(async move {
                         client.send_message(&text).await;
                     });
