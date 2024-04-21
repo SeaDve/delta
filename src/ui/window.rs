@@ -53,10 +53,19 @@ mod imp {
 
             let client = Client::new();
 
-            client.connect_message_received(clone!(@weak obj => move |_, message| {
+            client.connect_message_received(clone!(@weak obj => move |client, message_received| {
                 let imp = obj.imp();
 
-                imp.label.set_label(&format!("{}\n{}", imp.label.label(), message));
+                let peer_name = client.peer_list().get(&message_received.source).map_or(
+                    message_received.source.to_string(),
+                    |peer| peer.name().to_string(),
+                );
+                imp.label.set_label(&format!(
+                    "{}\n{}: {}",
+                    imp.label.label(),
+                    peer_name,
+                    message_received.message
+                ));
             }));
 
             self.entry

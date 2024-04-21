@@ -16,6 +16,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config, peer::Peer, peer_list::PeerList};
 
+#[derive(Clone, glib::Boxed)]
+#[boxed_type(name = "DeltaMessageReceived")]
+pub struct MessageReceived {
+    pub source: PeerId,
+    pub message: String,
+}
+
 mod imp {
     use std::sync::OnceLock;
 
@@ -54,7 +61,7 @@ mod imp {
 
             SIGNALS.get_or_init(|| {
                 vec![Signal::builder("message-received")
-                    .param_types([String::static_type()])
+                    .param_types([MessageReceived::static_type()])
                     .build()]
             })
         }
@@ -72,12 +79,12 @@ impl Client {
 
     pub fn connect_message_received<F>(&self, f: F) -> glib::SignalHandlerId
     where
-        F: Fn(&Self, &str) + 'static,
+        F: Fn(&Self, &MessageReceived) + 'static,
     {
         self.connect_closure(
             "message-received",
             false,
-            closure_local!(|obj: &Self, message: &str| {
+            closure_local!(|obj: &Self, message: &MessageReceived| {
                 f(obj, message);
             }),
         )
@@ -206,14 +213,14 @@ impl Client {
             }
             SwarmEvent::Behaviour(MyBehaviourEvent::Gossipsub(gossipsub::Event::Message {
                 propagation_source: peer_id,
-                message_id: id,
-                message,
+                message: raw_message,
+                ..
             })) => {
-                tracing::trace!("received message from {} with id: {}", peer_id, id);
+                tracing::trace!("received message from {}", peer_id);
 
-                match serde_json::from_slice(&message.data)? {
+                match serde_json::from_slice(&raw_message.data)? {
                     PublishData::Name { name } => {
-                        if let Some(source_peer_id) = message.source {
+                        if let Some(source_peer_id) = raw_message.source {
                             if let Some(peer) = self.peer_list().get(&source_peer_id) {
                                 peer.set_name(name);
                             } else {
@@ -234,8 +241,16 @@ impl Client {
                             }
                         };
 
-                        if should_accept {
-                            self.emit_by_name::<()>("message-received", &[&message]);
+                        if let Some(source_peer_id) = raw_message.source {
+                            if should_accept {
+                                let message_received = MessageReceived {
+                                    source: source_peer_id,
+                                    message,
+                                };
+                                self.emit_by_name::<()>("message-received", &[&message_received]);
+                            }
+                        } else {
+                            tracing::warn!("Received message without source peer id");
                         }
                     }
                 }
