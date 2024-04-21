@@ -4,7 +4,7 @@ use gtk::{
     subclass::prelude::*,
 };
 
-use crate::{application::Application, client::Client};
+use crate::{application::Application, client::Client, config, peer::Peer, ui::peer_row::PeerRow};
 
 mod imp {
     use std::cell::OnceCell;
@@ -19,7 +19,7 @@ mod imp {
         #[template_child]
         pub(super) label: TemplateChild<gtk::Label>,
         #[template_child]
-        pub(super) button: TemplateChild<gtk::Button>,
+        pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
 
         pub(super) client: OnceCell<Client>,
     }
@@ -62,14 +62,16 @@ mod imp {
                     });
                 }));
 
-            self.button
-                .connect_clicked(clone!(@weak obj, @weak client => move |_| {
-                    glib::spawn_future_local(async move {
-                        dbg!(client.list_peers().await);
-                    });
-                }));
+            self.peer_list_box
+                .bind_model(Some(client.peer_list()), |peer| {
+                    let peer = peer.downcast_ref::<Peer>().unwrap();
+                    let row = PeerRow::new(peer);
+                    row.upcast()
+                });
 
             self.client.set(client).unwrap();
+
+            obj.set_title(Some(&config::name()));
         }
     }
 

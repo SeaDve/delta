@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use futures_channel::oneshot;
 use futures_util::{FutureExt, StreamExt};
 use gtk::{
     glib::{self, clone, closure_local},
@@ -11,8 +10,11 @@ use gtk::{
 use libp2p::{
     gossipsub, mdns,
     swarm::{NetworkBehaviour, SwarmEvent},
-    PeerId, SwarmBuilder,
+    Swarm, SwarmBuilder,
 };
+use serde::{Deserialize, Serialize};
+
+use crate::{config, peer::Peer, peer_list::PeerList};
 
 mod imp {
     use std::sync::OnceLock;
@@ -24,6 +26,8 @@ mod imp {
     #[derive(Default)]
     pub struct Client {
         pub(super) command_tx: OnceLock<async_channel::Sender<Command>>,
+
+        pub(super) peer_list: PeerList,
     }
 
     #[glib::object_subclass]
@@ -79,17 +83,17 @@ impl Client {
         )
     }
 
-    pub async fn send_message(&self, message: &str) {
-        self.send_command(Command::SendMessage {
-            message: message.to_string(),
-        })
-        .await;
+    pub fn peer_list(&self) -> &PeerList {
+        &self.imp().peer_list
     }
 
-    pub async fn list_peers(&self) -> Vec<PeerId> {
-        let (tx, rx) = oneshot::channel();
-        self.send_command(Command::ListPeers { tx }).await;
-        rx.await.unwrap()
+    pub async fn send_message(&self, message: &str) {
+        self.publish(PublishData::Message(message.to_string()))
+            .await;
+    }
+
+    async fn publish(&self, data: PublishData) {
+        self.send_command(Command::Publish(data)).await;
     }
 
     async fn send_command(&self, command: Command) {
@@ -128,6 +132,8 @@ impl Client {
             })
             .build();
 
+        tracing::debug!("Local peer id: {peer_id}", peer_id = swarm.local_peer_id());
+
         let topic = gossipsub::IdentTopic::new("delta");
         swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
@@ -136,57 +142,94 @@ impl Client {
         loop {
             futures_util::select! {
                 command = command_rx.recv().fuse() => {
-                    match command {
-                        Ok(Command::SendMessage { message }) => {
-                            if let Err(err) = swarm.behaviour_mut().gossipsub.publish(topic.clone(), message) {
-                                tracing::error!("Failed to send message: {:?}", err);
+                    if let Err(err) = self.handle_command(&mut swarm, topic.clone(), command?).await {
+                        tracing::error!("Failed to handle command: {:?}", err);
+                    }
+                }
+                event = swarm.select_next_some() => {
+                    if let Err(err) = self.handle_swarm_event(&mut swarm, event).await {
+                        tracing::error!("Failed to handle swarm event: {:?}", err);
+                    }
+                }
+            }
+        }
+    }
+
+    async fn handle_command(
+        &self,
+        swarm: &mut Swarm<MyBehaviour>,
+        topic: impl Into<gossipsub::TopicHash>,
+        command: Command,
+    ) -> Result<()> {
+        match command {
+            Command::Publish(data) => {
+                let data_bytes = serde_json::to_vec(&data)?;
+                swarm.behaviour_mut().gossipsub.publish(topic, data_bytes)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn handle_swarm_event(
+        &self,
+        swarm: &mut Swarm<MyBehaviour>,
+        event: SwarmEvent<MyBehaviourEvent>,
+    ) -> Result<()> {
+        match event {
+            SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                for (peer_id, _multiaddr) in list {
+                    tracing::trace!("mDNS discovered a new peer: {peer_id}");
+
+                    swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                    self.peer_list().insert(Peer::new(peer_id));
+                }
+            }
+            SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
+                for (peer_id, _multiaddr) in list {
+                    tracing::trace!("mDNS discover peer has expired: {peer_id}");
+
+                    swarm
+                        .behaviour_mut()
+                        .gossipsub
+                        .remove_explicit_peer(&peer_id);
+                    self.peer_list().remove(&peer_id);
+                }
+            }
+            SwarmEvent::Behaviour(MyBehaviourEvent::Gossipsub(gossipsub::Event::Message {
+                propagation_source: peer_id,
+                message_id: id,
+                message,
+            })) => {
+                tracing::trace!("received message from {} with id: {}", peer_id, id);
+
+                match serde_json::from_slice(&message.data)? {
+                    PublishData::Name(name) => {
+                        if let Some(source_peer_id) = message.source {
+                            if let Some(peer) = self.peer_list().get(&source_peer_id) {
+                                peer.set_name(name);
+                            } else {
+                                tracing::warn!("Received name for unknown peer: {peer_id}")
                             }
+                        } else {
+                            tracing::warn!("Received name without source peer id");
                         }
-                        Ok(Command::ListPeers {tx}) => {
-                            let peers = swarm.connected_peers().copied().collect::<Vec<_>>();
-                            tx.send(peers).unwrap();
-                        }
-                        Err(err) => {
-                            tracing::error!("Failed to receive command: {:?}", err);
-                            break;
-                        }
+                    }
+                    PublishData::Message(message) => {
+                        self.emit_by_name::<()>("message-received", &[&message]);
                     }
                 }
-                event = swarm.select_next_some() => match event {
-                    SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
-                        for (peer_id, _multiaddr) in list {
-                            tracing::debug!("mDNS discovered a new peer: {peer_id}");
-                            swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
-                        }
-                    }
-                    SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
-                        for (peer_id, _multiaddr) in list {
-                            tracing::debug!("mDNS discover peer has expired: {peer_id}");
-                            swarm
-                                .behaviour_mut()
-                                .gossipsub
-                                .remove_explicit_peer(&peer_id);
-                        }
-                    }
-                    SwarmEvent::Behaviour(MyBehaviourEvent::Gossipsub(gossipsub::Event::Message {
-                        propagation_source: peer_id,
-                        message_id: id,
-                        message,
-                    })) => {
-                        let message_str = String::from_utf8_lossy(&message.data);
-
-                        tracing::debug!(
-                            "Got message: '{}' with id: {id} from peer: {peer_id}",
-                            message_str,
-                        );
-
-                        self.emit_by_name::<()>("message-received", &[&message_str.to_string()]);
-                    },
-                    SwarmEvent::NewListenAddr { address, .. } => {
-                        tracing::debug!("Local node is listening on {address}");
-                    }
-                    _ => {}
-                }
+            }
+            SwarmEvent::Behaviour(MyBehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
+                ..
+            })) => {
+                self.publish(PublishData::Name(config::name())).await;
+            }
+            SwarmEvent::NewListenAddr { address, .. } => {
+                tracing::trace!("Local node is listening on {address}");
+            }
+            _ => {
+                tracing::debug!("Unhandled swarm event: {:?}", event);
             }
         }
 
@@ -194,9 +237,14 @@ impl Client {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+enum PublishData {
+    Name(String),
+    Message(String),
+}
+
 enum Command {
-    SendMessage { message: String },
-    ListPeers { tx: oneshot::Sender<Vec<PeerId>> },
+    Publish(PublishData),
 }
 
 #[derive(NetworkBehaviour)]

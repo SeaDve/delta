@@ -7,21 +7,34 @@
         <property name="margin-end">12</property>
         <property name="margin-top">12</property>
         <property name="margin-bottom">12</property>
-        <property name="orientation">vertical</property>
         <property name="spacing">12</property>
         <child>
-          <object class="GtkLabel" id="label">
-            <property name="xalign">0</property>
-            <property name="label">Received:</property>
+          <object class="GtkListBox" id="peer_list_box">
+            <property name="selection-mode">none</property>
+            <property name="width-request">60</property>
+            <style>
+              <class name="boxed-list"/>
+            </style>
           </object>
         </child>
         <child>
-          <object class="GtkEntry" id="entry">
-          </object>
-        </child>
-        <child>
-          <object class="GtkButton" id="button">
-            <property name="label">List All Peers</property>
+          <object class="GtkBox">
+            <property name="margin-start">12</property>
+            <property name="margin-end">12</property>
+            <property name="margin-top">12</property>
+            <property name="margin-bottom">12</property>
+            <property name="orientation">vertical</property>
+            <property name="spacing">12</property>
+            <child>
+              <object class="GtkLabel" id="label">
+                <property name="xalign">0</property>
+                <property name="label">Received:</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkEntry" id="entry">
+              </object>
+            </child>
           </object>
         </child>
       </object>

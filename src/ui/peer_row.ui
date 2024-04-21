@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="DeltaPeerRow" parent="GtkListBoxRow">
+    <property name="child">
+      <object class="GtkBox">
+        <child>
+          <object class="GtkLabel" id="label">
+            <property name="xalign">0</property>
+          </object>
+        </child>
+      </object>
+    </property>
+  </template>
+</interface>

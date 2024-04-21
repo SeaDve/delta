@@ -8,7 +8,8 @@ anyhow = "1.0.82"
 async-channel = "2.2.1"
 futures-channel = "0.3.30"
 futures-util = "0.3.30"
-gtk = { package = "gtk4", version = "0.8.1" }
+gtk = { package = "gtk4", version = "0.8.1", features = ["gnome_43"] }
+indexmap = "2.2.6"
 libp2p = { version = "0.53.2", features = [
     "async-std",
     "gossipsub",
@@ -16,5 +17,7 @@ libp2p = { version = "0.53.2", features = [
     "mdns",
     "quic",
 ] }
+serde = { version = "1.0.198", features = ["derive"] }
+serde_json = "1.0.64"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
