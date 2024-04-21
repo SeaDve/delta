@@ -14,7 +14,7 @@ const OPUSENC_ELEMENT_NAME: &str = "opusenc";
 
 pub async fn receive(src_stream: Stream) -> Result<()> {
     let pipeline = gst::parse::launch(&format!(
-        "giostreamsrc name={STREAMSRC_ELEMENT_NAME} ! rtpstreamdepay ! rtpopusdepay ! opusdec ! audioconvert ! autoaudiosink",
+        "giostreamsrc name={STREAMSRC_ELEMENT_NAME} ! matroskademux ! opusdec ! audioconvert ! autoaudiosink",
     ))?
     .downcast::<gst::Pipeline>()
     .unwrap();
@@ -37,7 +37,7 @@ pub async fn receive(src_stream: Stream) -> Result<()> {
 
 pub async fn transmit(sink_stream: Stream) -> Result<()> {
     let pipeline = gst::parse::launch(&format!(
-        "pulsesrc name={PULSESRC_ELEMENT_NAME} ! audioconvert ! opusenc name={OPUSENC_ELEMENT_NAME} ! rtpopuspay ! rtpstreampay ! giostreamsink name={STREAMSINK_ELEMENT_NAME}",
+        "pulsesrc name={PULSESRC_ELEMENT_NAME} ! audioconvert ! opusenc name={OPUSENC_ELEMENT_NAME} ! matroskamux ! giostreamsink name={STREAMSINK_ELEMENT_NAME}",
     ))?
     .downcast::<gst::Pipeline>()
     .unwrap();
