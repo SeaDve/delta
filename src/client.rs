@@ -10,7 +10,7 @@ use gtk::{
 use libp2p::{
     gossipsub, mdns,
     swarm::{NetworkBehaviour, SwarmEvent},
-    Swarm, SwarmBuilder,
+    PeerId, Swarm, SwarmBuilder,
 };
 use serde::{Deserialize, Serialize};
 
@@ -87,9 +87,12 @@ impl Client {
         &self.imp().peer_list
     }
 
-    pub async fn send_message(&self, message: &str) {
-        self.publish(PublishData::Message(message.to_string()))
-            .await;
+    pub async fn send_message(&self, message: &str, destination: MessageDestination) {
+        self.publish(PublishData::Message {
+            message: message.to_string(),
+            destination,
+        })
+        .await;
     }
 
     async fn publish(&self, data: PublishData) {
@@ -209,7 +212,7 @@ impl Client {
                 tracing::trace!("received message from {} with id: {}", peer_id, id);
 
                 match serde_json::from_slice(&message.data)? {
-                    PublishData::Name(name) => {
+                    PublishData::Name { name } => {
                         if let Some(source_peer_id) = message.source {
                             if let Some(peer) = self.peer_list().get(&source_peer_id) {
                                 peer.set_name(name);
@@ -220,15 +223,30 @@ impl Client {
                             tracing::warn!("Received name without source peer id");
                         }
                     }
-                    PublishData::Message(message) => {
-                        self.emit_by_name::<()>("message-received", &[&message]);
+                    PublishData::Message {
+                        message,
+                        destination,
+                    } => {
+                        let should_accept = match destination {
+                            MessageDestination::All => true,
+                            MessageDestination::Peers(ref peer_ids) => {
+                                peer_ids.contains(swarm.local_peer_id())
+                            }
+                        };
+
+                        if should_accept {
+                            self.emit_by_name::<()>("message-received", &[&message]);
+                        }
                     }
                 }
             }
             SwarmEvent::Behaviour(MyBehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
                 ..
             })) => {
-                self.publish(PublishData::Name(config::name())).await;
+                self.publish(PublishData::Name {
+                    name: config::name(),
+                })
+                .await;
             }
             SwarmEvent::NewListenAddr { address, .. } => {
                 tracing::trace!("Local node is listening on {address}");
@@ -243,9 +261,20 @@ impl Client {
 }
 
 #[derive(Serialize, Deserialize)]
+pub enum MessageDestination {
+    All,
+    Peers(Vec<PeerId>),
+}
+
+#[derive(Serialize, Deserialize)]
 enum PublishData {
-    Name(String),
-    Message(String),
+    Name {
+        name: String,
+    },
+    Message {
+        destination: MessageDestination,
+        message: String,
+    },
 }
 
 enum Command {

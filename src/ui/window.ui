@@ -10,8 +10,10 @@
         <property name="spacing">12</property>
         <child>
           <object class="GtkListBox" id="peer_list_box">
-            <property name="selection-mode">none</property>
+            <property name="selection-mode">multiple</property>
             <property name="width-request">60</property>
+            <property name="height-request">30</property>
+            <property name="valign">start</property>
             <style>
               <class name="boxed-list"/>
             </style>

@@ -4,7 +4,13 @@ use gtk::{
     subclass::prelude::*,
 };
 
-use crate::{application::Application, client::Client, config, peer::Peer, ui::peer_row::PeerRow};
+use crate::{
+    application::Application,
+    client::{Client, MessageDestination},
+    config,
+    peer::Peer,
+    ui::peer_row::PeerRow,
+};
 
 mod imp {
     use std::cell::OnceCell;
@@ -55,10 +61,24 @@ mod imp {
 
             self.entry
                 .connect_activate(clone!(@weak obj, @weak client => move |entry| {
+                    let imp = obj.imp();
+
                     let text = entry.text();
                     entry.set_text("");
+
+                    let selected_peer_ids = imp
+                        .peer_list_box
+                        .selected_rows()
+                        .iter()
+                        .map(|row| *row.downcast_ref::<PeerRow>().unwrap().peer().id())
+                        .collect::<Vec<_>>();
+                    let destination = if selected_peer_ids.is_empty() {
+                        MessageDestination::All
+                    } else {
+                        MessageDestination::Peers(selected_peer_ids)
+                    };
                     glib::spawn_future_local(async move {
-                        client.send_message(&text).await;
+                        client.send_message(&text, destination).await;
                     });
                 }));
 
