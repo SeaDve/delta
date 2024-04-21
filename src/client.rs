@@ -121,15 +121,17 @@ impl Client {
                 )?;
 
                 let mdns = mdns::async_io::Behaviour::new(
-                    mdns::Config::default(),
+                    mdns::Config {
+                        ttl: Duration::from_secs(2),
+                        query_interval: Duration::from_secs(1),
+                        ..Default::default()
+                    },
                     key.public().to_peer_id(),
                 )?;
 
                 Ok(MyBehaviour { gossipsub, mdns })
             })?
-            .with_swarm_config(|cfg| {
-                cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX))
-            })
+            .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::MAX))
             .build();
 
         tracing::debug!("Local peer id: {peer_id}", peer_id = swarm.local_peer_id());
@@ -142,7 +144,7 @@ impl Client {
         loop {
             futures_util::select! {
                 command = command_rx.recv().fuse() => {
-                    if let Err(err) = self.handle_command(&mut swarm, topic.clone(), command?).await {
+                    if let Err(err) = self.handle_command(&mut swarm, &topic, command?).await {
                         tracing::error!("Failed to handle command: {:?}", err);
                     }
                 }
@@ -158,13 +160,16 @@ impl Client {
     async fn handle_command(
         &self,
         swarm: &mut Swarm<MyBehaviour>,
-        topic: impl Into<gossipsub::TopicHash>,
+        topic: &gossipsub::IdentTopic,
         command: Command,
     ) -> Result<()> {
         match command {
             Command::Publish(data) => {
                 let data_bytes = serde_json::to_vec(&data)?;
-                swarm.behaviour_mut().gossipsub.publish(topic, data_bytes)?;
+                swarm
+                    .behaviour_mut()
+                    .gossipsub
+                    .publish(topic.clone(), data_bytes)?;
             }
         }
 
