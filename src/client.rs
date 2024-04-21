@@ -94,7 +94,7 @@ impl Client {
         &self.imp().peer_list
     }
 
-    pub async fn send_message(&self, message: &str, destination: MessageDestination) {
+    pub async fn publish_message(&self, message: &str, destination: MessageDestination) {
         self.publish(PublishData::Message {
             message: message.to_string(),
             destination,

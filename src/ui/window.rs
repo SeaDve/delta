@@ -87,7 +87,7 @@ mod imp {
                         MessageDestination::Peers(selected_peer_ids)
                     };
                     glib::spawn_future_local(async move {
-                        client.send_message(&text, destination).await;
+                        client.publish_message(&text, destination).await;
                     });
                 }));
 
