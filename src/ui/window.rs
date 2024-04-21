@@ -26,6 +26,8 @@ mod imp {
         pub(super) label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        pub(super) button: TemplateChild<gtk::Button>,
 
         pub(super) client: OnceCell<Client>,
     }
@@ -89,6 +91,21 @@ mod imp {
                     glib::spawn_future_local(async move {
                         client.publish_message(&text, destination).await;
                     });
+                }));
+
+            self.button
+                .connect_clicked(clone!(@weak obj, @weak client => move |_| {
+                    let imp = obj.imp();
+
+                    if let Some(selected_row) = imp.peer_list_box.selected_row() {
+                        let selected_peer =
+                            selected_row.downcast::<PeerRow>().unwrap().peer();
+                        glib::spawn_future_local(async move {
+                            client.open_audio_stream(*selected_peer.id()).await;
+                        });
+                    } else {
+                        tracing::warn!("No peer selected!");
+                    }
                 }));
 
             self.peer_list_box

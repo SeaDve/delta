@@ -1,6 +1,7 @@
 #![allow(clippy::new_without_default)]
 
 mod application;
+mod audio_stream;
 mod client;
 mod config;
 mod peer;
@@ -15,6 +16,8 @@ const APP_ID: &str = "io.github.seadve.Delta";
 
 fn main() -> glib::ExitCode {
     tracing_subscriber::fmt::init();
+
+    gst::init().unwrap();
 
     let app = Application::new();
     app.run()

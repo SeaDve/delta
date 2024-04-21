@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use futures_util::{FutureExt, StreamExt};
 use gtk::{
     glib::{self, clone, closure_local},
@@ -10,11 +10,14 @@ use gtk::{
 use libp2p::{
     gossipsub, mdns,
     swarm::{NetworkBehaviour, SwarmEvent},
-    PeerId, Swarm, SwarmBuilder,
+    PeerId, StreamProtocol, Swarm, SwarmBuilder,
 };
+use libp2p_stream as stream;
 use serde::{Deserialize, Serialize};
 
-use crate::{config, peer::Peer, peer_list::PeerList};
+use crate::{audio_stream, config, peer::Peer, peer_list::PeerList};
+
+const AUDIO_STREAM_PROTOCOL: StreamProtocol = StreamProtocol::new("/audio");
 
 #[derive(Clone, glib::Boxed)]
 #[boxed_type(name = "DeltaMessageReceived")]
@@ -102,6 +105,10 @@ impl Client {
         .await;
     }
 
+    pub async fn open_audio_stream(&self, peer_id: PeerId) {
+        self.send_command(Command::OpenAudioStream(peer_id)).await;
+    }
+
     async fn publish(&self, data: PublishData) {
         self.send_command(Command::Publish(data)).await;
     }
@@ -139,7 +146,13 @@ impl Client {
                     key.public().to_peer_id(),
                 )?;
 
-                Ok(MyBehaviour { gossipsub, mdns })
+                let stream = stream::Behaviour::new();
+
+                Ok(MyBehaviour {
+                    gossipsub,
+                    mdns,
+                    stream,
+                })
             })?
             .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::MAX))
             .build();
@@ -150,6 +163,23 @@ impl Client {
         swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
         swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
+
+        let mut incoming_streams = swarm
+            .behaviour()
+            .stream
+            .new_control()
+            .accept(AUDIO_STREAM_PROTOCOL)?;
+
+        glib::spawn_future(async move {
+            while let Some((peer_id, stream)) = incoming_streams.next().await {
+                tracing::debug!("Accepted new stream from {}", peer_id);
+                glib::spawn_future(async move {
+                    if let Err(err) = audio_stream::receive(stream).await {
+                        tracing::error!("Failed to receive audio stream: {:?}", err);
+                    }
+                });
+            }
+        });
 
         loop {
             futures_util::select! {
@@ -180,6 +210,20 @@ impl Client {
                     .behaviour_mut()
                     .gossipsub
                     .publish(topic.clone(), data_bytes)?;
+            }
+            Command::OpenAudioStream(peer_id) => {
+                let stream = swarm
+                    .behaviour()
+                    .stream
+                    .new_control()
+                    .open_stream(peer_id, AUDIO_STREAM_PROTOCOL)
+                    .await
+                    .map_err(|err| anyhow!(err))?;
+                glib::spawn_future(async move {
+                    if let Err(err) = audio_stream::transmit(stream).await {
+                        tracing::error!("Failed to transmit audio stream: {:?}", err);
+                    }
+                });
             }
         }
 
@@ -267,7 +311,7 @@ impl Client {
                 tracing::trace!("Local node is listening on {address}");
             }
             _ => {
-                tracing::debug!("Unhandled swarm event: {:?}", event);
+                tracing::trace!("Unhandled swarm event: {:?}", event);
             }
         }
 
@@ -294,10 +338,12 @@ enum PublishData {
 
 enum Command {
     Publish(PublishData),
+    OpenAudioStream(PeerId),
 }
 
 #[derive(NetworkBehaviour)]
 struct MyBehaviour {
     gossipsub: gossipsub::Behaviour,
     mdns: mdns::async_io::Behaviour,
+    stream: stream::Behaviour,
 }
