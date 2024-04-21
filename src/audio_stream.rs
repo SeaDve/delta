@@ -8,13 +8,14 @@ use gtk::{
 use libp2p::Stream;
 
 const APPSRC_ELEMENT_NAME: &str = "appsrc";
-const APPSINK_ELEMENT_NAME: &str = "appsink";
+
 const PULSESRC_ELEMENT_NAME: &str = "pulsesrc";
+const APPSINK_ELEMENT_NAME: &str = "appsink";
+const OPUSENC_ELEMENT_NAME: &str = "opusenc";
 
 pub async fn receive(mut src_stream: Stream) -> Result<()> {
     let pipeline = gst::parse::launch(&format!(
-        "appsrc name={} ! oggdemux ! opusdec ! audioconvert ! autoaudiosink",
-        APPSRC_ELEMENT_NAME
+        "appsrc name={APPSRC_ELEMENT_NAME} ! oggdemux ! opusdec ! audioconvert ! autoaudiosink",
     ))?
     .downcast::<gst::Pipeline>()
     .unwrap();
@@ -36,7 +37,7 @@ pub async fn receive(mut src_stream: Stream) -> Result<()> {
         let mut raw_buf = vec![0; 16_000];
         let n_bytes = src_stream.read(&mut raw_buf).await?;
 
-        if n_bytes == 0 {
+        if dbg!(n_bytes) == 0 {
             tracing::debug!("Empty read");
             break;
         }
@@ -63,8 +64,7 @@ pub async fn receive(mut src_stream: Stream) -> Result<()> {
 
 pub async fn transmit(mut sink_stream: Stream) -> Result<()> {
     let pipeline = gst::parse::launch(&format!(
-        "pulsesrc name={} ! audioconvert ! opusenc ! oggmux ! appsink name={}",
-        PULSESRC_ELEMENT_NAME, APPSINK_ELEMENT_NAME
+        "pulsesrc name={PULSESRC_ELEMENT_NAME} ! audioconvert ! opusenc name={OPUSENC_ELEMENT_NAME} ! oggmux ! appsink name={APPSINK_ELEMENT_NAME}",
     ))?
     .downcast::<gst::Pipeline>()
     .unwrap();
@@ -79,6 +79,10 @@ pub async fn transmit(mut sink_stream: Stream) -> Result<()> {
     ensure!(!device_name.is_empty(), "Empty device name");
 
     tracing::debug!("Using device `{}`", device_name);
+
+    let opusenc = pipeline.by_name(OPUSENC_ELEMENT_NAME).unwrap();
+    opusenc.set_property("bitrate", 16_000);
+    opusenc.set_property_from_str("bitrate-type", "cbr");
 
     let appsink = pipeline.by_name(APPSINK_ELEMENT_NAME).unwrap();
     appsink.set_property("caps", gst::Caps::builder("audio/ogg").build());
