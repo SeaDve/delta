@@ -4,6 +4,8 @@ mod application;
 mod audio_stream;
 mod client;
 mod config;
+mod input_stream;
+mod output_stream;
 mod peer;
 mod peer_list;
 mod ui;

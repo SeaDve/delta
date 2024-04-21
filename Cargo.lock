@@ -619,6 +619,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-channel 2.2.1",
+ "async-std",
  "futures-util",
  "gstreamer",
  "gtk4",

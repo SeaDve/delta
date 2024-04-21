@@ -1,29 +1,26 @@
 use anyhow::{anyhow, ensure, Context, Result};
-use futures_util::{AsyncReadExt, AsyncWriteExt};
+use futures_util::future;
 use gst::prelude::*;
-use gtk::{
-    gio,
-    glib::{self, clone},
-};
+use gtk::glib;
 use libp2p::Stream;
 
-const APPSRC_ELEMENT_NAME: &str = "appsrc";
+use crate::{input_stream::InputStream, output_stream::OutputStream};
+
+const STREAMSRC_ELEMENT_NAME: &str = "giostreamsrc";
 
 const PULSESRC_ELEMENT_NAME: &str = "pulsesrc";
-const APPSINK_ELEMENT_NAME: &str = "appsink";
+const STREAMSINK_ELEMENT_NAME: &str = "giostreamsink";
 const OPUSENC_ELEMENT_NAME: &str = "opusenc";
 
-pub async fn receive(mut src_stream: Stream) -> Result<()> {
+pub async fn receive(src_stream: Stream) -> Result<()> {
     let pipeline = gst::parse::launch(&format!(
-        "appsrc name={APPSRC_ELEMENT_NAME} ! oggdemux ! opusdec ! audioconvert ! autoaudiosink",
+        "giostreamsrc name={STREAMSRC_ELEMENT_NAME} ! matroskademux ! opusdec ! audioconvert ! autoaudiosink",
     ))?
     .downcast::<gst::Pipeline>()
     .unwrap();
 
-    let appsrc = pipeline.by_name(APPSRC_ELEMENT_NAME).unwrap();
-    appsrc.set_property("caps", gst::Caps::builder("audio/ogg").build());
-    appsrc.set_property_from_str("stream-type", "stream");
-    appsrc.set_property("is-live", true);
+    let streamsrc = pipeline.by_name(STREAMSRC_ELEMENT_NAME).unwrap();
+    streamsrc.set_property("stream", InputStream::new(src_stream));
 
     let _bus_watch = pipeline
         .bus()
@@ -33,38 +30,14 @@ pub async fn receive(mut src_stream: Stream) -> Result<()> {
 
     pipeline.set_state(gst::State::Playing)?;
 
-    loop {
-        let mut raw_buf = vec![0; 16_000];
-        let n_bytes = src_stream.read(&mut raw_buf).await?;
-
-        if dbg!(n_bytes) == 0 {
-            tracing::debug!("Empty read");
-            break;
-        }
-
-        let buf = {
-            let mut buf = gst::Buffer::with_size(n_bytes)?;
-            let buf_mut = buf.get_mut().unwrap();
-            buf_mut.append_memory(gst::Memory::from_slice(raw_buf));
-            buf_mut.unset_flags(gst::BufferFlags::TAG_MEMORY);
-            buf
-        };
-
-        appsrc
-            .emit_by_name::<gst::FlowReturn>("push-buffer", &[&buf])
-            .into_result()?;
-    }
-
-    appsrc
-        .emit_by_name::<gst::FlowReturn>("end-of-stream", &[])
-        .into_result()?;
+    future::pending::<()>().await;
 
     Ok(())
 }
 
-pub async fn transmit(mut sink_stream: Stream) -> Result<()> {
+pub async fn transmit(sink_stream: Stream) -> Result<()> {
     let pipeline = gst::parse::launch(&format!(
-        "pulsesrc name={PULSESRC_ELEMENT_NAME} ! audioconvert ! opusenc name={OPUSENC_ELEMENT_NAME} ! oggmux ! appsink name={APPSINK_ELEMENT_NAME}",
+        "pulsesrc name={PULSESRC_ELEMENT_NAME} ! audioconvert ! opusenc name={OPUSENC_ELEMENT_NAME} ! matroskamux ! giostreamsink name={STREAMSINK_ELEMENT_NAME}",
     ))?
     .downcast::<gst::Pipeline>()
     .unwrap();
@@ -84,8 +57,8 @@ pub async fn transmit(mut sink_stream: Stream) -> Result<()> {
     opusenc.set_property("bitrate", 16_000);
     opusenc.set_property_from_str("bitrate-type", "cbr");
 
-    let appsink = pipeline.by_name(APPSINK_ELEMENT_NAME).unwrap();
-    appsink.set_property("caps", gst::Caps::builder("audio/ogg").build());
+    let streamsink = pipeline.by_name(STREAMSINK_ELEMENT_NAME).unwrap();
+    streamsink.set_property("stream", OutputStream::new(sink_stream));
 
     let _bus_watch = pipeline
         .bus()
@@ -95,27 +68,7 @@ pub async fn transmit(mut sink_stream: Stream) -> Result<()> {
 
     pipeline.set_state(gst::State::Playing)?;
 
-    loop {
-        let sample = gio::spawn_blocking(clone!(@strong appsink => move || {
-            appsink.emit_by_name::<Option<gst::Sample>>("pull-sample", &[])
-        }));
-
-        let Some(sample) = sample.await.unwrap() else {
-            tracing::debug!("No sample");
-            break;
-        };
-
-        let Some(buffer) = sample.buffer() else {
-            tracing::debug!("No buffer");
-            break;
-        };
-
-        sink_stream
-            .write_all(buffer.map_readable()?.as_slice())
-            .await?;
-    }
-
-    sink_stream.close().await?;
+    future::pending::<()>().await;
 
     Ok(())
 }
