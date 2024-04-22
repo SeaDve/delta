@@ -82,7 +82,7 @@ fn handle_bus_message(message: &gst::Message) -> glib::ControlFlow {
     }
 }
 
-pub fn find_default_source_device() -> Result<gst::Device> {
+fn find_default_source_device() -> Result<gst::Device> {
     let provider = gst::DeviceProviderFactory::by_name("pulsedeviceprovider")
         .context("Missing pulseaudio device provider")?;
 

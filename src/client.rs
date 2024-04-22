@@ -148,7 +148,7 @@ impl Client {
 
                 let stream = stream::Behaviour::new();
 
-                Ok(MyBehaviour {
+                Ok(Behaviour {
                     gossipsub,
                     mdns,
                     stream,
@@ -199,7 +199,7 @@ impl Client {
 
     async fn handle_command(
         &self,
-        swarm: &mut Swarm<MyBehaviour>,
+        swarm: &mut Swarm<Behaviour>,
         topic: &gossipsub::IdentTopic,
         command: Command,
     ) -> Result<()> {
@@ -232,11 +232,11 @@ impl Client {
 
     async fn handle_swarm_event(
         &self,
-        swarm: &mut Swarm<MyBehaviour>,
-        event: SwarmEvent<MyBehaviourEvent>,
+        swarm: &mut Swarm<Behaviour>,
+        event: SwarmEvent<BehaviourEvent>,
     ) -> Result<()> {
         match event {
-            SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+            SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                 for (peer_id, _multiaddr) in list {
                     tracing::trace!("mDNS discovered a new peer: {peer_id}");
 
@@ -244,7 +244,7 @@ impl Client {
                     self.peer_list().insert(Peer::new(peer_id));
                 }
             }
-            SwarmEvent::Behaviour(MyBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
+            SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
                 for (peer_id, _multiaddr) in list {
                     tracing::trace!("mDNS discover peer has expired: {peer_id}");
 
@@ -255,7 +255,7 @@ impl Client {
                     self.peer_list().remove(&peer_id);
                 }
             }
-            SwarmEvent::Behaviour(MyBehaviourEvent::Gossipsub(gossipsub::Event::Message {
+            SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Message {
                 propagation_source: peer_id,
                 message: raw_message,
                 ..
@@ -299,7 +299,7 @@ impl Client {
                     }
                 }
             }
-            SwarmEvent::Behaviour(MyBehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
+            SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
                 ..
             })) => {
                 self.publish(PublishData::Name {
@@ -342,7 +342,7 @@ enum Command {
 }
 
 #[derive(NetworkBehaviour)]
-struct MyBehaviour {
+struct Behaviour {
     gossipsub: gossipsub::Behaviour,
     mdns: mdns::async_io::Behaviour,
     stream: stream::Behaviour,
