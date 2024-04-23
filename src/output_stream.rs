@@ -57,7 +57,8 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct OutputStream(ObjectSubclass<imp::OutputStream>);
+    pub struct OutputStream(ObjectSubclass<imp::OutputStream>)
+        @extends gio::OutputStream;
 }
 
 impl OutputStream {

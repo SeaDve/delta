@@ -51,7 +51,8 @@ mod imp {
 }
 
 glib::wrapper! {
-    pub struct InputStream(ObjectSubclass<imp::InputStream>);
+    pub struct InputStream(ObjectSubclass<imp::InputStream>)
+        @extends gio::InputStream;
 }
 
 impl InputStream {
