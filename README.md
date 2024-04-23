@@ -1,4 +1,4 @@
-# Project DELTA
+# Project DeLTA
 
 **De**centralized **L**and **T**ransportation **A**ssistant
 
