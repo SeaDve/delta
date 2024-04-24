@@ -1,7 +1,8 @@
 {
     "rust-analyzer.server.path": "${workspaceFolder}/.toolbox/rust-analyzer.sh",
+    "terminal.integrated.defaultProfile.linux": "runtime",
     "terminal.integrated.profiles.linux": {
-        "Ubuntu Toolbox": {
+        "runtime": {
             "overrideName": true,
             "icon": "package",
             "path": "${workspaceFolder}/.toolbox/toolbox.sh",
