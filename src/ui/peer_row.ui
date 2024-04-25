@@ -11,5 +11,14 @@
         </style>
       </object>
     </child>
+    <child type="suffix">
+      <object class="GtkButton">
+        <property name="valign">center</property>
+        <property name="icon-name">view-more-symbolic</property>
+        <style>
+          <class name="flat"/>
+        </style>
+      </object>
+    </child>
   </template>
 </interface>
