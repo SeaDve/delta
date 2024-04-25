@@ -67,7 +67,7 @@
                     <property name="icon-name">emblem-system-symbolic</property>
                     <property name="child">
                       <object class="GtkLabel">
-                        <property name="label">Hello</property>
+                        <property name="label">Settings Here</property>
                       </object>
                     </property>
                   </object>
