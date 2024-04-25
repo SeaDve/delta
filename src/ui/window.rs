@@ -23,8 +23,6 @@ mod imp {
         pub(super) label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
-        #[template_child]
-        pub(super) button: TemplateChild<gtk::Button>,
 
         pub(super) client: OnceCell<Client>,
     }
@@ -90,27 +88,41 @@ mod imp {
                     });
                 }));
 
-            self.button
-                .connect_clicked(clone!(@weak obj, @weak client => move |_| {
-                    let imp = obj.imp();
+            if false {
+                // Add some dummy peers
 
-                    if let Some(selected_row) = imp.peer_list_box.selected_row() {
-                        let selected_peer =
-                            selected_row.downcast::<PeerRow>().unwrap().peer();
-                        glib::spawn_future_local(async move {
-                            client.open_audio_stream(*selected_peer.id()).await;
-                        });
-                    } else {
-                        tracing::warn!("No peer selected!");
-                    }
-                }));
+                let peers = client.peer_list();
+
+                let a = Peer::new(libp2p::PeerId::random());
+                a.set_name("Alpha");
+                peers.insert(a);
+
+                let b = Peer::new(libp2p::PeerId::random());
+                b.set_name("Bravo");
+                peers.insert(b);
+
+                let c = Peer::new(libp2p::PeerId::random());
+                c.set_name("Charlie");
+                peers.insert(c);
+            }
 
             self.peer_list_box
-                .bind_model(Some(client.peer_list()), |peer| {
+                .set_placeholder(Some(&gtk::Label::new(Some("No Nearby Peers"))));
+
+            self.peer_list_box.bind_model(
+                Some(client.peer_list()),
+                clone!(@weak client => @default-panic, move |peer| {
                     let peer = peer.downcast_ref::<Peer>().unwrap();
                     let row = PeerRow::new(peer);
+                    row.connect_call_requested(clone!(@weak client => move |row| {
+                        let peer_id = *row.peer().id();
+                        glib::spawn_future_local(async move {
+                            client.open_audio_stream(peer_id).await;
+                        });
+                    }));
                     row.upcast()
-                });
+                }),
+            );
 
             self.client.set(client).unwrap();
 

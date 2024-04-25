@@ -1,10 +1,12 @@
 use adw::{prelude::*, subclass::prelude::*};
-use gtk::glib;
+use gtk::glib::{self, clone, closure_local};
 
 use crate::peer::Peer;
 
 mod imp {
-    use std::cell::OnceCell;
+    use std::{cell::OnceCell, sync::OnceLock};
+
+    use glib::subclass::Signal;
 
     use super::*;
 
@@ -14,6 +16,9 @@ mod imp {
     pub struct PeerRow {
         #[property(get, set, construct_only)]
         pub(super) peer: OnceCell<Peer>,
+
+        #[template_child]
+        pub(super) call_button: TemplateChild<gtk::Button>,
     }
 
     #[glib::object_subclass]
@@ -38,10 +43,21 @@ mod imp {
 
             let obj = self.obj();
 
+            self.call_button
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    obj.emit_by_name::<()>("call-requested", &[]);
+                }));
+
             let peer = obj.peer();
             peer.bind_property("name", &*obj, "title")
                 .sync_create()
                 .build();
+        }
+
+        fn signals() -> &'static [glib::subclass::Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+
+            SIGNALS.get_or_init(|| vec![Signal::builder("call-requested").build()])
         }
     }
 
@@ -59,5 +75,18 @@ glib::wrapper! {
 impl PeerRow {
     pub fn new(peer: &Peer) -> Self {
         glib::Object::builder().property("peer", peer).build()
+    }
+
+    pub fn connect_call_requested<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self) + 'static,
+    {
+        self.connect_closure(
+            "call-requested",
+            false,
+            closure_local!(|obj: &Self| {
+                f(obj);
+            }),
+        )
     }
 }

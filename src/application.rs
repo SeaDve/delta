@@ -32,6 +32,14 @@ mod imp {
             let window = Window::new(&obj);
             window.present();
         }
+
+        fn startup(&self) {
+            self.parent_startup();
+
+            let obj = self.obj();
+
+            obj.setup_accels();
+        }
     }
 
     impl GtkApplicationImpl for Application {}
@@ -50,5 +58,9 @@ impl Application {
             .property("application-id", APP_ID)
             .property("flags", gio::ApplicationFlags::NON_UNIQUE)
             .build()
+    }
+
+    fn setup_accels(&self) {
+        self.set_accels_for_action("window.close", &["<Control>w"]);
     }
 }
