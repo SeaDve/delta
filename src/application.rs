@@ -1,4 +1,5 @@
-use gtk::{gio, glib, prelude::*, subclass::prelude::*};
+use adw::{prelude::*, subclass::prelude::*};
+use gtk::{gio, glib};
 
 use crate::{ui::Window, APP_ID};
 
@@ -12,7 +13,7 @@ mod imp {
     impl ObjectSubclass for Application {
         const NAME: &'static str = "DeltaApplication";
         type Type = super::Application;
-        type ParentType = gtk::Application;
+        type ParentType = adw::Application;
     }
 
     impl ObjectImpl for Application {}
@@ -34,11 +35,12 @@ mod imp {
     }
 
     impl GtkApplicationImpl for Application {}
+    impl AdwApplicationImpl for Application {}
 }
 
 glib::wrapper! {
     pub struct Application(ObjectSubclass<imp::Application>)
-        @extends gio::Application, gtk::Application,
+        @extends gio::Application, gtk::Application, adw::Application,
         @implements gio::ActionMap, gio::ActionGroup;
 }
 

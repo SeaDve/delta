@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+adw = { package = "libadwaita", version = "0.6", features = ["v1_1"] }
 anyhow = "1.0.82"
 async-channel = "2.2.1"
 async-std = "1.12.0"

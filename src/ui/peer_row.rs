@@ -1,4 +1,5 @@
-use gtk::{glib, prelude::*, subclass::prelude::*};
+use adw::{prelude::*, subclass::prelude::*};
+use gtk::glib;
 
 use crate::peer::Peer;
 
@@ -13,18 +14,13 @@ mod imp {
     pub struct PeerRow {
         #[property(get, set, construct_only)]
         pub(super) peer: OnceCell<Peer>,
-
-        #[template_child]
-        pub(super) label: TemplateChild<gtk::Label>,
-
-        pub(super) bindings: glib::BindingGroup,
     }
 
     #[glib::object_subclass]
     impl ObjectSubclass for PeerRow {
         const NAME: &'static str = "DeltaPeerRow";
         type Type = super::PeerRow;
-        type ParentType = gtk::ListBoxRow;
+        type ParentType = adw::ActionRow;
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
@@ -40,20 +36,24 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.bindings.bind("name", &*self.label, "label").build();
+            let obj = self.obj();
 
-            let peer = self.peer.get().unwrap();
-            self.bindings.set_source(Some(peer));
+            let peer = obj.peer();
+            peer.bind_property("name", &*obj, "title")
+                .sync_create()
+                .build();
         }
     }
 
     impl WidgetImpl for PeerRow {}
     impl ListBoxRowImpl for PeerRow {}
+    impl PreferencesRowImpl for PeerRow {}
+    impl ActionRowImpl for PeerRow {}
 }
 
 glib::wrapper! {
     pub struct PeerRow(ObjectSubclass<imp::PeerRow>)
-        @extends gtk::Widget, gtk::ListBoxRow;
+        @extends gtk::Widget, gtk::ListBoxRow, adw::PreferencesRow, adw::ActionRow;
 }
 
 impl PeerRow {
