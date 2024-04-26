@@ -1,0 +1,6 @@
+.peer-row-prefix {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+    border-radius: 9999px;
+    padding: 6px;
+}

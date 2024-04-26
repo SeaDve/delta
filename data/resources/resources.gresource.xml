@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/io/github/seadve/Delta/">
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/driving-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/map-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/settings-symbolic.svg</file>
+    <file compressed="true">style.css</file>
+  </gresource>
+</gresources>

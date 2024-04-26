@@ -57,6 +57,7 @@ impl Application {
     pub fn new() -> Self {
         glib::Object::builder()
             .property("application-id", APP_ID)
+            .property("resource-base-path", "/io/github/seadve/Delta/")
             .property("flags", gio::ApplicationFlags::NON_UNIQUE)
             .build()
     }

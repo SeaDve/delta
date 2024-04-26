@@ -11,6 +11,15 @@
         </style>
       </object>
     </child>
+    <child type="prefix">
+      <object class="GtkImage">
+        <property name="valign">center</property>
+        <property name="icon-name">driving-symbolic</property>
+        <style>
+          <class name="peer-row-prefix"/>
+        </style>
+      </object>
+    </child>
     <child type="suffix">
       <object class="GtkButton">
         <property name="valign">center</property>
