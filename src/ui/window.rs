@@ -106,8 +106,14 @@ mod imp {
                 peers.insert(c);
             }
 
-            self.peer_list_box
-                .set_placeholder(Some(&gtk::Label::new(Some("No Nearby Peers"))));
+            let label = gtk::Label::builder()
+                .margin_top(12)
+                .margin_bottom(12)
+                .margin_start(12)
+                .margin_end(12)
+                .label("No Nearby Peers")
+                .build();
+            self.peer_list_box.set_placeholder(Some(&label));
 
             self.peer_list_box.bind_model(
                 Some(client.peer_list()),
