@@ -47,13 +47,31 @@
                         <property name="orientation">vertical</property>
                         <property name="spacing">12</property>
                         <child>
-                          <object class="GtkLabel" id="label">
+                          <object class="GtkLabel" id="test_name_label">
+
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel" id="test_received_label">
                             <property name="xalign">0</property>
                             <property name="label">Received:</property>
                           </object>
                         </child>
                         <child>
-                          <object class="GtkEntry" id="entry">
+                          <object class="GtkEntry" id="test_entry">
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkListBox" id="test_peer_list_box">
+                            <property name="selection-mode">multiple</property>
+                            <style>
+                              <class name="boxed-list"/>
+                            </style>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="test_unselect_all_button">
+                            <property name="label">Unselect All</property>
                           </object>
                         </child>
                       </object>

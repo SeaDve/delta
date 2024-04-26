@@ -18,11 +18,17 @@ mod imp {
     #[template(file = "window.ui")]
     pub struct Window {
         #[template_child]
-        pub(super) entry: TemplateChild<gtk::Entry>,
-        #[template_child]
-        pub(super) label: TemplateChild<gtk::Label>,
-        #[template_child]
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        pub(super) test_name_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub(super) test_received_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub(super) test_entry: TemplateChild<gtk::Entry>,
+        #[template_child]
+        pub(super) test_peer_list_box: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        pub(super) test_unselect_all_button: TemplateChild<gtk::Button>,
 
         pub(super) client: OnceCell<Client>,
     }
@@ -50,62 +56,6 @@ mod imp {
 
             let client = Client::new();
 
-            client.connect_message_received(clone!(@weak obj => move |client, message_received| {
-                let imp = obj.imp();
-
-                let peer_name = client.peer_list().get(&message_received.source).map_or(
-                    message_received.source.to_string(),
-                    |peer| peer.name().to_string(),
-                );
-                imp.label.set_label(&format!(
-                    "{}\n{}: {}",
-                    imp.label.label(),
-                    peer_name,
-                    message_received.message
-                ));
-            }));
-
-            self.entry
-                .connect_activate(clone!(@weak obj, @weak client => move |entry| {
-                    let imp = obj.imp();
-
-                    let text = entry.text();
-                    entry.set_text("");
-
-                    let selected_peer_ids = imp
-                        .peer_list_box
-                        .selected_rows()
-                        .iter()
-                        .map(|row| *row.downcast_ref::<PeerRow>().unwrap().peer().id())
-                        .collect::<Vec<_>>();
-                    let destination = if selected_peer_ids.is_empty() {
-                        MessageDestination::All
-                    } else {
-                        MessageDestination::Peers(selected_peer_ids)
-                    };
-                    glib::spawn_future_local(async move {
-                        client.publish_message(&text, destination).await;
-                    });
-                }));
-
-            if false {
-                // Add some dummy peers
-
-                let peers = client.peer_list();
-
-                let a = Peer::new(libp2p::PeerId::random());
-                a.set_name("Alpha");
-                peers.insert(a);
-
-                let b = Peer::new(libp2p::PeerId::random());
-                b.set_name("Bravo");
-                peers.insert(b);
-
-                let c = Peer::new(libp2p::PeerId::random());
-                c.set_name("Charlie");
-                peers.insert(c);
-            }
-
             let label = gtk::Label::builder()
                 .margin_top(12)
                 .margin_bottom(12)
@@ -130,9 +80,101 @@ mod imp {
                 }),
             );
 
-            self.client.set(client).unwrap();
+            self.client.set(client.clone()).unwrap();
 
-            obj.set_title(Some(&config::name()));
+            if false {
+                // Add some dummy peers
+
+                let peers = client.peer_list();
+
+                let a = Peer::new(libp2p::PeerId::random());
+                a.set_name("Alpha");
+                peers.insert(a);
+
+                let b = Peer::new(libp2p::PeerId::random());
+                b.set_name("Bravo");
+                peers.insert(b);
+
+                let c = Peer::new(libp2p::PeerId::random());
+                c.set_name("Charlie");
+                peers.insert(c);
+            }
+
+            self.test_name_label.set_label(&config::name());
+
+            self.test_peer_list_box.set_placeholder(Some(&label));
+
+            self.test_peer_list_box.bind_model(
+                Some(client.peer_list()),
+                clone!(@weak client => @default-panic, move |peer| {
+                    let peer = peer.downcast_ref::<Peer>().unwrap().clone();
+
+                    let label = gtk::Label::builder()
+                        .build();
+                    peer.bind_property("name", &label, "label")
+                        .sync_create()
+                        .build();
+
+                    unsafe {
+                        label.set_data("delta-peer", peer);
+                    }
+
+                    label.upcast()
+                }),
+            );
+
+            client.connect_message_received(clone!(@weak obj => move |client, message_received| {
+                let imp = obj.imp();
+
+                let peer_name = client.peer_list().get(&message_received.source).map_or(
+                    message_received.source.to_string(),
+                    |peer| peer.name().to_string(),
+                );
+                imp.test_received_label.set_label(&format!(
+                    "{}\n{}: {}",
+                    imp.test_received_label.label(),
+                    peer_name,
+                    message_received.message
+                ));
+            }));
+
+            self.test_unselect_all_button
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    let imp = obj.imp();
+                    imp.test_peer_list_box.unselect_all();
+                }));
+
+            self.test_entry
+                .connect_activate(clone!(@weak obj, @weak client => move |entry| {
+                    let imp = obj.imp();
+
+                    let text = entry.text();
+                    entry.set_text("");
+
+                    let selected_peer_ids = imp
+                        .test_peer_list_box
+                        .selected_rows()
+                        .iter()
+                        .map(|row| unsafe {
+                            *row.child()
+                                .unwrap()
+                                .downcast_ref::<gtk::Label>()
+                                .unwrap()
+                                .data::<Peer>("delta-peer")
+                                .unwrap()
+                                .as_ref()
+                                .id()
+                        })
+                        .collect::<Vec<_>>();
+                    let destination = if selected_peer_ids.is_empty() {
+                        MessageDestination::All
+                    } else {
+                        MessageDestination::Peers(selected_peer_ids)
+                    };
+                    glib::spawn_future_local(async move {
+                        client.publish_message(&text, destination).await;
+                    });
+                }));
         }
     }
 
