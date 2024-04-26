@@ -56,14 +56,14 @@ mod imp {
 
             let client = Client::new();
 
-            let label = gtk::Label::builder()
+            let placeholder_label = gtk::Label::builder()
                 .margin_top(12)
                 .margin_bottom(12)
                 .margin_start(12)
                 .margin_end(12)
                 .label("No Nearby Peers")
                 .build();
-            self.peer_list_box.set_placeholder(Some(&label));
+            self.peer_list_box.set_placeholder(Some(&placeholder_label));
 
             self.peer_list_box.bind_model(
                 Some(client.peer_list()),
@@ -102,7 +102,9 @@ mod imp {
 
             self.test_name_label.set_label(&config::name());
 
-            self.test_peer_list_box.set_placeholder(Some(&label));
+            let test_placeholder_label = gtk::Label::builder().label("No Nearby Peers").build();
+            self.test_peer_list_box
+                .set_placeholder(Some(&test_placeholder_label));
 
             self.test_peer_list_box.bind_model(
                 Some(client.peer_list()),
