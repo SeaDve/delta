@@ -5,7 +5,7 @@
 ## Development
 
 1. Set up a toolbox container.
-   - Run, `toolbox create --distro ubuntu --release 22.04`
+   - Run, `toolbox create --image quay.io/toolbx-images/debian-toolbox:12`
 2. Set up Rust via `rustup`.
    - Optionally, install `rust-analyzer` via `rustup component add rust-analyzer`.
 3. Install the following system dependencies via `apt`:

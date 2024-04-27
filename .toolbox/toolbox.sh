@@ -1,3 +1,3 @@
 #!/bin/sh
 
-/app/bin/host-spawn -no-pty toolbox --distro ubuntu --release 22.04 "$@"
+/app/bin/host-spawn -no-pty toolbox --container debian-toolbox-12 "$@"
