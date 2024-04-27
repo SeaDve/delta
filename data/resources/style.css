@@ -1,6 +1,23 @@
+/* CallPage */
+
+.call-page-icon  {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+    border-radius: 9999px;
+    padding: 24px;
+}
+
+.call-page-time-label {
+    font-size: xx-large;
+    font-weight: 300;
+    font-feature-settings: "tnum";
+}
+
+/* PeerRow */
+
 .peer-row-prefix {
     background-color: @accent_bg_color;
     color: @accent_fg_color;
     border-radius: 9999px;
-    padding: 6px;
+    padding: 24px;
 }

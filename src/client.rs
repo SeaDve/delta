@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
+use futures_channel::oneshot;
 use futures_util::{FutureExt, StreamExt};
 use gtk::{
     glib::{self, clone, closure_local},
@@ -15,7 +16,10 @@ use libp2p::{
 use libp2p_stream as stream;
 use serde::{Deserialize, Serialize};
 
-use crate::{audio_stream, config, peer::Peer, peer_list::PeerList};
+use crate::{
+    call::Call, config, input_stream::InputStream, output_stream::OutputStream, peer::Peer,
+    peer_list::PeerList,
+};
 
 const AUDIO_STREAM_PROTOCOL: StreamProtocol = StreamProtocol::new("/audio");
 
@@ -26,8 +30,14 @@ pub struct MessageReceived {
     pub message: String,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum CallIncomingResponse {
+    Accept,
+    Reject,
+}
+
 mod imp {
-    use std::sync::OnceLock;
+    use std::{cell::RefCell, sync::OnceLock};
 
     use gtk::glib::subclass::Signal;
 
@@ -36,6 +46,9 @@ mod imp {
     #[derive(Default)]
     pub struct Client {
         pub(super) command_tx: OnceLock<async_channel::Sender<Command>>,
+        pub(super) active_call: RefCell<Option<Call>>,
+        pub(super) call_incoming_response_tx:
+            RefCell<Option<oneshot::Sender<CallIncomingResponse>>>,
 
         pub(super) peer_list: PeerList,
     }
@@ -63,9 +76,20 @@ mod imp {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
 
             SIGNALS.get_or_init(|| {
-                vec![Signal::builder("message-received")
-                    .param_types([MessageReceived::static_type()])
-                    .build()]
+                vec![
+                    Signal::builder("message-received")
+                        .param_types([MessageReceived::static_type()])
+                        .build(),
+                    Signal::builder("call-incoming")
+                        .param_types([Peer::static_type()])
+                        .build(),
+                    Signal::builder("call-incoming-accepted")
+                        .param_types([Call::static_type()])
+                        .build(),
+                    Signal::builder("call-incoming-declined")
+                        .param_types([Call::static_type()])
+                        .build(),
+                ]
             })
         }
     }
@@ -87,9 +111,43 @@ impl Client {
         self.connect_closure(
             "message-received",
             false,
-            closure_local!(|obj: &Self, message: &MessageReceived| {
-                f(obj, message);
-            }),
+            closure_local!(|obj: &Self, message: &MessageReceived| f(obj, message)),
+        )
+    }
+
+    /// The callback should return `true` to accept the call, or `false` to reject it.
+    ///
+    /// The peer argument is the peer that is calling.
+    pub fn connect_call_incoming<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self, &Peer) + 'static,
+    {
+        self.connect_closure(
+            "call-incoming",
+            false,
+            closure_local!(|obj: &Self, peer: &Peer| f(obj, peer)),
+        )
+    }
+
+    pub fn connect_call_incoming_accepted<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self, &Call) + 'static,
+    {
+        self.connect_closure(
+            "call-incoming-accepted",
+            false,
+            closure_local!(|obj: &Self, call: &Call| f(obj, call)),
+        )
+    }
+
+    pub fn connect_call_incoming_declined<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self, &Call) + 'static,
+    {
+        self.connect_closure(
+            "call-incoming-declined",
+            false,
+            closure_local!(|obj: &Self, call: &Call| f(obj, call)),
         )
     }
 
@@ -105,8 +163,21 @@ impl Client {
         .await;
     }
 
-    pub async fn open_audio_stream(&self, peer_id: PeerId) {
-        self.send_command(Command::OpenAudioStream(peer_id)).await;
+    pub async fn call_request(&self, destination: PeerId) {
+        self.send_command(Command::Publish(PublishData::CallRequest { destination }))
+            .await;
+    }
+
+    pub fn call_incoming_accept(&self) {
+        let imp = self.imp();
+        let tx = imp.call_incoming_response_tx.take().unwrap();
+        tx.send(CallIncomingResponse::Accept).unwrap();
+    }
+
+    pub fn call_incoming_decline(&self) {
+        let imp = self.imp();
+        let tx = imp.call_incoming_response_tx.take().unwrap();
+        tx.send(CallIncomingResponse::Reject).unwrap();
     }
 
     async fn publish(&self, data: PublishData) {
@@ -170,16 +241,25 @@ impl Client {
             .new_control()
             .accept(AUDIO_STREAM_PROTOCOL)?;
 
-        glib::spawn_future(async move {
-            while let Some((peer_id, stream)) = incoming_streams.next().await {
-                tracing::debug!("Accepted new stream from {}", peer_id);
-                glib::spawn_future(async move {
-                    if let Err(err) = audio_stream::receive(stream).await {
-                        tracing::error!("Failed to receive audio stream: {:?}", err);
+        glib::spawn_future_local(clone!(@weak self as obj => async move {
+            let imp = obj.imp();
+
+            while let Some((their_peer_id, output_stream)) = incoming_streams.next().await {
+                tracing::debug!("Incoming stream from {}", their_peer_id);
+
+                if let Some(active_call) = imp.active_call.borrow().as_ref() {
+                    if active_call.peer().id() == &their_peer_id {
+                        if let Err(err) = active_call.set_output_stream(OutputStream::new(output_stream))  {
+                            tracing::error!("Failed to set output stream: {:?}", err);
+                        }
+                    } else {
+                        tracing::warn!("Received stream from unexpected peer: {their_peer_id}");
                     }
-                });
+                } else {
+                    tracing::warn!("Received stream without active call");
+                }
             }
-        });
+        }));
 
         loop {
             futures_util::select! {
@@ -197,12 +277,15 @@ impl Client {
         }
     }
 
+    // Handle outgoing commands
     async fn handle_command(
         &self,
         swarm: &mut Swarm<Behaviour>,
         topic: &gossipsub::IdentTopic,
         command: Command,
     ) -> Result<()> {
+        let imp = self.imp();
+
         match command {
             Command::Publish(data) => {
                 let data_bytes = serde_json::to_vec(&data)?;
@@ -210,31 +293,26 @@ impl Client {
                     .behaviour_mut()
                     .gossipsub
                     .publish(topic.clone(), data_bytes)?;
-            }
-            Command::OpenAudioStream(peer_id) => {
-                let stream = swarm
-                    .behaviour()
-                    .stream
-                    .new_control()
-                    .open_stream(peer_id, AUDIO_STREAM_PROTOCOL)
-                    .await
-                    .map_err(|err| anyhow!(err))?;
-                glib::spawn_future(async move {
-                    if let Err(err) = audio_stream::transmit(stream).await {
-                        tracing::error!("Failed to transmit audio stream: {:?}", err);
-                    }
-                });
+
+                if let PublishData::CallRequest { destination } = data {
+                    let destination_peer = self.peer_list().get(&destination).unwrap();
+                    let prev_call = imp.active_call.replace(Some(Call::new(&destination_peer)));
+                    debug_assert_eq!(prev_call.map(|d| *d.peer().id()), None);
+                }
             }
         }
 
         Ok(())
     }
 
+    // Handle ingoing events
     async fn handle_swarm_event(
         &self,
         swarm: &mut Swarm<Behaviour>,
         event: SwarmEvent<BehaviourEvent>,
     ) -> Result<()> {
+        let imp = self.imp();
+
         match event {
             SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                 for (peer_id, _multiaddr) in list {
@@ -256,11 +334,11 @@ impl Client {
                 }
             }
             SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Message {
-                propagation_source: peer_id,
+                propagation_source: their_peer_id,
                 message: raw_message,
                 ..
             })) => {
-                tracing::trace!("received message from {}", peer_id);
+                tracing::trace!("received message from {}", their_peer_id);
 
                 match serde_json::from_slice(&raw_message.data)? {
                     PublishData::Name { name } => {
@@ -268,7 +346,7 @@ impl Client {
                             if let Some(peer) = self.peer_list().get(&source_peer_id) {
                                 peer.set_name(name);
                             } else {
-                                tracing::warn!("Received name for unknown peer: {peer_id}")
+                                tracing::warn!("Received name for unknown peer: {source_peer_id}")
                             }
                         } else {
                             tracing::warn!("Received name without source peer id");
@@ -297,6 +375,78 @@ impl Client {
                             tracing::warn!("Received message without source peer id");
                         }
                     }
+                    PublishData::CallRequest { ref destination }
+                        if destination == swarm.local_peer_id() =>
+                    {
+                        let (response_tx, response_rx) = oneshot::channel();
+
+                        imp.call_incoming_response_tx.replace(Some(response_tx));
+                        let peer = self.peer_list().get(&their_peer_id).unwrap();
+                        self.emit_by_name::<()>("call-incoming", &[&peer]);
+
+                        let response = response_rx.await.unwrap();
+                        let has_active_call = imp.active_call.borrow().is_some();
+
+                        if response == CallIncomingResponse::Accept && !has_active_call {
+                            tracing::debug!("Opening output stream to {their_peer_id}");
+
+                            let input_stream = swarm
+                                .behaviour()
+                                .stream
+                                .new_control()
+                                .open_stream(their_peer_id, AUDIO_STREAM_PROTOCOL)
+                                .await
+                                .map_err(|err| anyhow!(err))?;
+
+                            let call = Call::new(&peer);
+                            call.set_input_stream(InputStream::new(input_stream))?;
+                            imp.active_call.replace(Some(call));
+
+                            self.publish(PublishData::CallRequestResponse {
+                                destination: their_peer_id,
+                                response: CallRequestResponse::Accept,
+                            })
+                            .await;
+                        } else {
+                            self.publish(PublishData::CallRequestResponse {
+                                destination: their_peer_id,
+                                response: CallRequestResponse::Reject,
+                            })
+                            .await;
+                        }
+                    }
+                    PublishData::CallRequestResponse {
+                        ref destination,
+                        response,
+                    } if destination == swarm.local_peer_id() => {
+                        tracing::debug!("Received call request response: {:?}", response);
+
+                        match response {
+                            CallRequestResponse::Accept => {
+                                tracing::debug!("Opening output stream to {their_peer_id}");
+
+                                let input_stream = swarm
+                                    .behaviour()
+                                    .stream
+                                    .new_control()
+                                    .open_stream(their_peer_id, AUDIO_STREAM_PROTOCOL)
+                                    .await
+                                    .map_err(|err| anyhow!(err))?;
+
+                                imp.active_call
+                                    .borrow()
+                                    .as_ref()
+                                    .unwrap()
+                                    .set_input_stream(InputStream::new(input_stream))?;
+                            }
+                            CallRequestResponse::Reject => {
+                                imp.active_call.replace(None);
+                            }
+                        }
+                    }
+                    other_published_data => {
+                        tracing::debug!("Ignoring published data: {:?}", other_published_data);
+                    }
                 }
             }
             SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
@@ -319,13 +469,19 @@ impl Client {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum MessageDestination {
     All,
     Peers(Vec<PeerId>),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
+pub enum CallRequestResponse {
+    Accept,
+    Reject,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 enum PublishData {
     Name {
         name: String,
@@ -334,11 +490,17 @@ enum PublishData {
         destination: MessageDestination,
         message: String,
     },
+    CallRequest {
+        destination: PeerId,
+    },
+    CallRequestResponse {
+        destination: PeerId,
+        response: CallRequestResponse,
+    },
 }
 
 enum Command {
     Publish(PublishData),
-    OpenAudioStream(PeerId),
 }
 
 #[derive(NetworkBehaviour)]

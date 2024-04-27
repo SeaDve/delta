@@ -6,8 +6,10 @@ use crate::{
     client::{Client, MessageDestination},
     config,
     peer::Peer,
-    ui::peer_row::PeerRow,
+    ui::{call_page::CallPage, peer_row::PeerRow},
 };
+
+const LABEL_PEER_KEY: &str = "delta-label-peer";
 
 mod imp {
     use std::cell::OnceCell;
@@ -18,7 +20,14 @@ mod imp {
     #[template(file = "window.ui")]
     pub struct Window {
         #[template_child]
+        pub(super) main_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
+        pub(super) main_page: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub(super) call_page: TemplateChild<CallPage>,
+        #[template_child]
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
+
         #[template_child]
         pub(super) test_name_label: TemplateChild<gtk::Label>,
         #[template_child]
@@ -40,6 +49,8 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            CallPage::ensure_type();
+
             klass.bind_template();
         }
 
@@ -56,6 +67,20 @@ mod imp {
 
             let client = Client::new();
 
+            client.connect_call_incoming(clone!(@weak obj => @default-panic, move |_, peer| {
+                // TODO transition call page to incoming state
+            }));
+            client.connect_call_incoming_accepted(
+                clone!(@weak obj => @default-panic, move |_, call| {
+                    // TODO transition call page to connected state
+                }),
+            );
+            client.connect_call_incoming_declined(
+                clone!(@weak obj => @default-panic, move |_, call| {
+                    // TODO move back to main page
+                }),
+            );
+
             let placeholder_label = gtk::Label::builder()
                 .margin_top(12)
                 .margin_bottom(12)
@@ -67,13 +92,14 @@ mod imp {
 
             self.peer_list_box.bind_model(
                 Some(client.peer_list()),
-                clone!(@weak client => @default-panic, move |peer| {
+                clone!(@weak obj, @weak client => @default-panic, move |peer| {
                     let peer = peer.downcast_ref::<Peer>().unwrap();
                     let row = PeerRow::new(peer);
-                    row.connect_call_requested(clone!(@weak client => move |row| {
+                    row.connect_call_requested(clone!(@weak obj, @weak client => move |row| {
+                        // TODO transition call page to outgoing state
                         let peer_id = *row.peer().id();
                         glib::spawn_future_local(async move {
-                            client.open_audio_stream(peer_id).await;
+                            client.call_request(peer_id).await;
                         });
                     }));
                     row.upcast()
@@ -118,7 +144,7 @@ mod imp {
                         .build();
 
                     unsafe {
-                        label.set_data("delta-peer", peer);
+                        label.set_data(LABEL_PEER_KEY, peer);
                     }
 
                     label.upcast()
@@ -162,7 +188,7 @@ mod imp {
                                 .unwrap()
                                 .downcast_ref::<gtk::Label>()
                                 .unwrap()
-                                .data::<Peer>("delta-peer")
+                                .data::<Peer>(LABEL_PEER_KEY)
                                 .unwrap()
                                 .as_ref()
                                 .id()

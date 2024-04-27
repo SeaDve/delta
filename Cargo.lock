@@ -629,6 +629,7 @@ dependencies = [
  "anyhow",
  "async-channel 2.2.1",
  "async-std",
+ "futures-channel",
  "futures-util",
  "gstreamer",
  "gtk4",
