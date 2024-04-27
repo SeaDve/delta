@@ -1,8 +1,13 @@
 use gtk::{glib, prelude::*, subclass::prelude::*};
 
 pub enum CallPageState {
+    // Has Accept, Decline
     Incoming,
+
+    // Has Cancel (End Call)
     Outgoing,
+
+    // Has Time, End Call
     Connected,
 }
 
