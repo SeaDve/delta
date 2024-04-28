@@ -30,7 +30,6 @@
             <property name="spacing">6</property>
             <child>
               <object class="GtkLabel" id="caller_name_label">
-                <property name="label">TKH-192</property>
                 <style>
                   <class name="title-1"/>
                 </style>
@@ -60,6 +59,7 @@
               <object class="GtkButton" id="accept_button">
                 <property name="halign">center</property>
                 <property name="valign">center</property>
+                <property name="tooltip-text">Accept</property>
                 <property name="icon-name">call-start-symbolic</property>
                 <style>
                   <class name="suggested-action"/>
@@ -71,6 +71,7 @@
               <object class="GtkButton" id="decline_button">
                 <property name="halign">center</property>
                 <property name="valign">center</property>
+                <property name="tooltip-text">Decline</property>
                 <property name="icon-name">call-stop-symbolic</property>
                 <style>
                   <class name="destructive-action"/>
@@ -95,6 +96,7 @@
               <object class="GtkButton" id="cancel_button">
                 <property name="halign">center</property>
                 <property name="valign">center</property>
+                <property name="tooltip-text">Cancel</property>
                 <property name="icon-name">call-stop-symbolic</property>
                 <style>
                   <class name="destructive-action"/>
@@ -122,6 +124,7 @@
               <object class="GtkButton" id="end_button">
                 <property name="halign">center</property>
                 <property name="valign">center</property>
+                <property name="tooltip-text">End</property>
                 <property name="icon-name">call-stop-symbolic</property>
                 <style>
                   <class name="destructive-action"/>
