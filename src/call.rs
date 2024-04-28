@@ -3,7 +3,7 @@ use std::cell::OnceCell;
 use anyhow::{anyhow, ensure, Context, Result};
 use gst::prelude::*;
 use gtk::{
-    glib::{self, clone, closure_local},
+    glib::{self, clone},
     prelude::*,
     subclass::prelude::*,
 };
@@ -27,12 +27,9 @@ pub enum CallState {
 }
 
 mod imp {
-    use std::{
-        cell::{Cell, RefCell},
-        sync::OnceLock,
-    };
+    use std::cell::{Cell, RefCell};
 
-    use gst::{bus::BusWatchGuard, glib::subclass::Signal};
+    use gst::bus::BusWatchGuard;
 
     use super::*;
 
@@ -66,12 +63,6 @@ mod imp {
 
             obj.start_end();
         }
-
-        fn signals() -> &'static [glib::subclass::Signal] {
-            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
-
-            SIGNALS.get_or_init(|| vec![Signal::builder("ended").build()])
-        }
     }
 }
 
@@ -82,13 +73,6 @@ glib::wrapper! {
 impl Call {
     pub fn new(peer: &Peer) -> Self {
         glib::Object::builder().property("peer", peer).build()
-    }
-
-    pub fn connect_ended<F>(&self, f: F) -> glib::SignalHandlerId
-    where
-        F: Fn(&Self) + 'static,
-    {
-        self.connect_closure("ended", false, closure_local!(|obj: &Self| f(obj)))
     }
 
     pub fn start_end(&self) {
@@ -105,8 +89,6 @@ impl Call {
 
             tracing::debug!("Sent EOS to output pipeline");
         }
-
-        imp.state.set(CallState::Ended);
     }
 
     pub fn set_input_stream(&self, input_stream: InputStream) -> Result<()> {
@@ -242,7 +224,7 @@ impl Call {
             imp.input_closed.set(true);
 
             if imp.output_closed.get() {
-                obj.emit_by_name::<()>("ended", &[]);
+                obj.set_state(CallState::Ended);
             }
         }));
     }
@@ -266,7 +248,7 @@ impl Call {
             imp.output_closed.set(true);
 
             if imp.input_closed.get() {
-                obj.emit_by_name::<()>("ended", &[]);
+                obj.set_state(CallState::Ended);
             }
         }));
     }

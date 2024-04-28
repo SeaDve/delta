@@ -35,7 +35,10 @@ pub struct MessageReceived {
 }
 
 mod imp {
-    use std::{cell::RefCell, sync::OnceLock};
+    use std::{
+        cell::{OnceCell, RefCell},
+        sync::OnceLock,
+    };
 
     use gtk::glib::subclass::Signal;
 
@@ -47,7 +50,7 @@ mod imp {
         #[property(get)]
         pub(super) active_call: RefCell<Option<Call>>,
 
-        pub(super) command_tx: OnceLock<async_channel::Sender<Command>>,
+        pub(super) command_tx: OnceCell<async_channel::Sender<Command>>,
         pub(super) call_incoming_response_tx:
             RefCell<Option<oneshot::Sender<CallIncomingResponse>>>,
         pub(super) call_incoming_cancel_tx: RefCell<Option<oneshot::Sender<()>>>,
@@ -168,8 +171,6 @@ impl Client {
         })
         .await;
 
-        self.set_active_call(None);
-
         Ok(())
     }
 
@@ -186,8 +187,10 @@ impl Client {
 
     fn set_active_call(&self, call: Option<Call>) {
         if let Some(ref call) = call {
-            call.connect_ended(clone!(@weak self as obj => move |_| {
-                obj.set_active_call(None);
+            call.connect_state_notify(clone!(@weak self as obj => move |call| {
+                if call.state() == CallState::Ended {
+                    obj.set_active_call(None);
+                }
             }));
         }
 
@@ -493,7 +496,6 @@ impl Client {
                             CallRequestResponse::Reject => {
                                 let active_call = self.active_call().unwrap();
                                 active_call.set_state(CallState::Ended);
-                                self.set_active_call(None);
                             }
                             CallRequestResponse::Cancelled => unreachable!(),
                         }
