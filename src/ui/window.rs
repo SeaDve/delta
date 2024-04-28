@@ -130,6 +130,7 @@ mod imp {
                 Some(client.peer_list()),
                 clone!(@weak client => @default-panic, move |peer| {
                     let peer = peer.downcast_ref::<Peer>().unwrap();
+
                     let row = PeerRow::new(peer);
                     row.connect_called(clone!(@weak client => move |row| {
                         let peer_id = *row.peer().id();
@@ -137,6 +138,7 @@ mod imp {
                             client.call_request(peer_id).await;
                         });
                     }));
+
                     row.upcast()
                 }),
             );
