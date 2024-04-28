@@ -50,9 +50,7 @@
                             <property name="orientation">vertical</property>
                             <property name="spacing">12</property>
                             <child>
-                              <object class="GtkLabel" id="test_name_label">
-
-                              </object>
+                              <object class="GtkLabel" id="test_name_label"/>
                             </child>
                             <child>
                               <object class="GtkLabel" id="test_received_label">
@@ -96,9 +94,7 @@
               </object>
             </child>
             <child>
-              <object class="DeltaCallPage" id="call_page">
-
-              </object>
+              <object class="DeltaCallPage" id="call_page"/>
             </child>
           </object>
         </property>
