@@ -3,11 +3,14 @@ use gtk::glib::{self, clone};
 
 use crate::{
     application::Application,
+    call::{Call, CallState},
     client::{Client, MessageDestination},
     config,
     peer::Peer,
-    ui::peer_row::PeerRow,
+    ui::{call_page::CallPage, peer_row::PeerRow},
 };
+
+const LABEL_PEER_KEY: &str = "delta-label-peer";
 
 mod imp {
     use std::cell::OnceCell;
@@ -18,7 +21,14 @@ mod imp {
     #[template(file = "window.ui")]
     pub struct Window {
         #[template_child]
+        pub(super) main_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
+        pub(super) main_page: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub(super) call_page: TemplateChild<CallPage>,
+        #[template_child]
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
+
         #[template_child]
         pub(super) test_name_label: TemplateChild<gtk::Label>,
         #[template_child]
@@ -40,6 +50,8 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            CallPage::ensure_type();
+
             klass.bind_template();
         }
 
@@ -56,6 +68,55 @@ mod imp {
 
             let client = Client::new();
 
+            client.connect_active_call_notify(clone!(@weak obj => move |client| {
+                let imp = obj.imp();
+
+                if let Some(active_call) = client.active_call() {
+                    debug_assert!(matches!(
+                        active_call.state(),
+                        CallState::Incoming | CallState::Outgoing
+                    ));
+
+                    imp.call_page.set_call(Some(active_call.clone()));
+                    imp.main_stack.set_visible_child(&*imp.call_page);
+
+                    active_call.connect_state_notify(clone!(@weak obj => move |call| {
+                        let imp = obj.imp();
+
+                        match call.state() {
+                            CallState::Ended => {
+                                imp.call_page.set_call(None::<Call>);
+                                imp.main_stack.set_visible_child(&*imp.main_page);
+                            }
+                            CallState::Connected => {}
+                            CallState::Init | CallState::Incoming | CallState::Outgoing => {
+                                unreachable!()
+                            }
+                        }
+                    }));
+                } else {
+                    imp.call_page.set_call(None::<Call>);
+                    imp.main_stack.set_visible_child(&*imp.main_page);
+                }
+            }));
+
+            self.call_page
+                .connect_incoming_accepted(clone!(@weak client => move |_| {
+                    client.call_incoming_accept();
+                }));
+            self.call_page
+                .connect_incoming_declined(clone!(@weak client => move |_| {
+                    client.call_incoming_decline();
+                }));
+            self.call_page
+                .connect_outgoing_cancelled(clone!(@weak client => move |_| {
+                    glib::spawn_future_local(async move {
+                        if let Err(err) = client.call_outgoing_cancel().await {
+                            tracing::error!("Failed to cancel outgoing call: {:?}", err);
+                        }
+                    });
+                }));
+
             let placeholder_label = gtk::Label::builder()
                 .margin_top(12)
                 .margin_bottom(12)
@@ -69,13 +130,15 @@ mod imp {
                 Some(client.peer_list()),
                 clone!(@weak client => @default-panic, move |peer| {
                     let peer = peer.downcast_ref::<Peer>().unwrap();
+
                     let row = PeerRow::new(peer);
-                    row.connect_call_requested(clone!(@weak client => move |row| {
+                    row.connect_called(clone!(@weak client => move |row| {
                         let peer_id = *row.peer().id();
                         glib::spawn_future_local(async move {
-                            client.open_audio_stream(peer_id).await;
+                            client.call_request(peer_id).await;
                         });
                     }));
+
                     row.upcast()
                 }),
             );
@@ -118,7 +181,7 @@ mod imp {
                         .build();
 
                     unsafe {
-                        label.set_data("delta-peer", peer);
+                        label.set_data(LABEL_PEER_KEY, peer);
                     }
 
                     label.upcast()
@@ -162,7 +225,7 @@ mod imp {
                                 .unwrap()
                                 .downcast_ref::<gtk::Label>()
                                 .unwrap()
-                                .data::<Peer>("delta-peer")
+                                .data::<Peer>(LABEL_PEER_KEY)
                                 .unwrap()
                                 .as_ref()
                                 .id()

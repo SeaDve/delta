@@ -1,7 +1,7 @@
 #![allow(clippy::new_without_default)]
 
 mod application;
-mod audio_stream;
+mod call;
 mod client;
 mod config;
 mod input_stream;

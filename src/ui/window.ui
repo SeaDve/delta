@@ -6,89 +6,95 @@
     <property name="content">
       <object class="GtkWindowHandle">
         <property name="child">
-          <object class="GtkBox">
+          <object class="GtkStack" id="main_stack">
+            <property name="transition-type">over-up-down</property>
             <child>
-              <object class="GtkStackSwitcher">
-                <property name="stack">stack</property>
-                <property name="orientation">vertical</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkStack" id="stack">
-                <property name="vexpand">True</property>
-                <property name="hexpand">True</property>
+              <object class="GtkBox" id="main_page">
                 <child>
-                  <object class="GtkStackPage">
-                    <property name="icon-name">view-list-symbolic</property>
-                    <property name="child">
-                      <object class="GtkListBox" id="peer_list_box">
-                        <property name="margin-start">12</property>
-                        <property name="margin-end">12</property>
-                        <property name="margin-top">12</property>
-                        <property name="margin-bottom">12</property>
-                        <property name="selection-mode">none</property>
-                        <property name="valign">start</property>
-                        <style>
-                          <class name="boxed-list"/>
-                        </style>
-                      </object>
-                    </property>
+                  <object class="GtkStackSwitcher">
+                    <property name="stack">main_page_stack</property>
+                    <property name="orientation">vertical</property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkStackPage">
-                    <property name="icon-name">map-symbolic</property>
-                    <property name="child">
-                      <object class="GtkBox">
-                        <property name="margin-start">12</property>
-                        <property name="margin-end">12</property>
-                        <property name="margin-top">12</property>
-                        <property name="margin-bottom">12</property>
-                        <property name="orientation">vertical</property>
-                        <property name="spacing">12</property>
-                        <child>
-                          <object class="GtkLabel" id="test_name_label">
-
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkLabel" id="test_received_label">
-                            <property name="xalign">0</property>
-                            <property name="label">Received:</property>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkEntry" id="test_entry">
-                          </object>
-                        </child>
-                        <child>
-                          <object class="GtkListBox" id="test_peer_list_box">
-                            <property name="selection-mode">multiple</property>
+                  <object class="GtkStack" id="main_page_stack">
+                    <property name="vexpand">True</property>
+                    <property name="hexpand">True</property>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="icon-name">view-list-symbolic</property>
+                        <property name="child">
+                          <object class="GtkListBox" id="peer_list_box">
+                            <property name="margin-start">12</property>
+                            <property name="margin-end">12</property>
+                            <property name="margin-top">12</property>
+                            <property name="margin-bottom">12</property>
+                            <property name="selection-mode">none</property>
+                            <property name="valign">start</property>
                             <style>
                               <class name="boxed-list"/>
                             </style>
                           </object>
-                        </child>
-                        <child>
-                          <object class="GtkButton" id="test_unselect_all_button">
-                            <property name="label">Unselect All</property>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="icon-name">map-symbolic</property>
+                        <property name="child">
+                          <object class="GtkBox">
+                            <property name="margin-start">12</property>
+                            <property name="margin-end">12</property>
+                            <property name="margin-top">12</property>
+                            <property name="margin-bottom">12</property>
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">12</property>
+                            <child>
+                              <object class="GtkLabel" id="test_name_label"/>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="test_received_label">
+                                <property name="xalign">0</property>
+                                <property name="label">Received:</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkEntry" id="test_entry">
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkListBox" id="test_peer_list_box">
+                                <property name="selection-mode">multiple</property>
+                                <style>
+                                  <class name="boxed-list"/>
+                                </style>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="test_unselect_all_button">
+                                <property name="label">Unselect All</property>
+                              </object>
+                            </child>
                           </object>
-                        </child>
+                        </property>
                       </object>
-                    </property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkStackPage">
-                    <property name="icon-name">settings-symbolic</property>
-                    <property name="child">
-                      <object class="GtkLabel">
-                        <property name="label">Settings Here</property>
+                    </child>
+                    <child>
+                      <object class="GtkStackPage">
+                        <property name="icon-name">settings-symbolic</property>
+                        <property name="child">
+                          <object class="GtkLabel">
+                            <property name="label">Settings Here</property>
+                          </object>
+                        </property>
                       </object>
-                    </property>
+                    </child>
                   </object>
                 </child>
               </object>
+            </child>
+            <child>
+              <object class="DeltaCallPage" id="call_page"/>
             </child>
           </object>
         </property>

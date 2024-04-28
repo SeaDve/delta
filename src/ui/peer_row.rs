@@ -45,7 +45,7 @@ mod imp {
 
             self.call_button
                 .connect_clicked(clone!(@weak obj => move |_| {
-                    obj.emit_by_name::<()>("call-requested", &[]);
+                    obj.emit_by_name::<()>("called", &[]);
                 }));
 
             let peer = obj.peer();
@@ -57,7 +57,7 @@ mod imp {
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
 
-            SIGNALS.get_or_init(|| vec![Signal::builder("call-requested").build()])
+            SIGNALS.get_or_init(|| vec![Signal::builder("called").build()])
         }
     }
 
@@ -77,12 +77,12 @@ impl PeerRow {
         glib::Object::builder().property("peer", peer).build()
     }
 
-    pub fn connect_call_requested<F>(&self, f: F) -> glib::SignalHandlerId
+    pub fn connect_called<F>(&self, f: F) -> glib::SignalHandlerId
     where
         F: Fn(&Self) + 'static,
     {
         self.connect_closure(
-            "call-requested",
+            "called",
             false,
             closure_local!(|obj: &Self| {
                 f(obj);
