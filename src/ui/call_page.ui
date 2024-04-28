@@ -107,7 +107,7 @@
           </object>
         </child>
         <child>
-          <object class="GtkBox" id="connected_page">
+          <object class="GtkBox" id="ongoing_page">
             <property name="orientation">vertical</property>
             <property name="hexpand">True</property>
             <property name="valign">center</property>

@@ -133,24 +133,6 @@ impl Client {
         Ok(())
     }
 
-    pub async fn call_outgoing_cancel(&self) -> Result<()> {
-        let active_call = self
-            .active_call()
-            .context("No active outgoing call to cancel")?;
-        debug_assert_eq!(active_call.state(), CallState::Outgoing);
-
-        active_call.set_state(CallState::Ended);
-
-        self.publish(PublishData::CallRequestCancel {
-            destination: *active_call.peer().id(),
-        })
-        .await;
-
-        self.set_active_call(None);
-
-        Ok(())
-    }
-
     pub fn call_incoming_accept(&self) {
         debug_assert_eq!(
             self.active_call().map(|c| c.state()),
@@ -173,7 +155,42 @@ impl Client {
         tx.send(CallIncomingResponse::Reject).unwrap();
     }
 
+    pub async fn call_outgoing_cancel(&self) -> Result<()> {
+        let active_call = self
+            .active_call()
+            .context("No active outgoing call to cancel")?;
+        debug_assert_eq!(active_call.state(), CallState::Outgoing);
+
+        active_call.set_state(CallState::Ended);
+
+        self.publish(PublishData::CallRequestCancel {
+            destination: *active_call.peer().id(),
+        })
+        .await;
+
+        self.set_active_call(None);
+
+        Ok(())
+    }
+
+    pub fn call_ongoing_end(&self) -> Result<()> {
+        let active_call = self
+            .active_call()
+            .context("No active ongoing call to end")?;
+        debug_assert_eq!(active_call.state(), CallState::Ongoing);
+
+        active_call.start_end();
+
+        Ok(())
+    }
+
     fn set_active_call(&self, call: Option<Call>) {
+        if let Some(ref call) = call {
+            call.connect_ended(clone!(@weak self as obj => move |_| {
+                obj.set_active_call(None);
+            }));
+        }
+
         self.imp().active_call.replace(call);
         self.notify_active_call();
     }
@@ -418,7 +435,7 @@ impl Client {
                                     return;
                                 }
 
-                                call.set_state(CallState::Connected);
+                                call.set_state(CallState::Ongoing);
 
                                 obj.publish(PublishData::CallRequestResponse {
                                     destination: their_peer_id,
@@ -471,7 +488,7 @@ impl Client {
 
                                 let active_call = self.active_call().unwrap();
                                 active_call.set_input_stream(InputStream::new(input_stream))?;
-                                active_call.set_state(CallState::Connected);
+                                active_call.set_state(CallState::Ongoing);
                             }
                             CallRequestResponse::Reject => {
                                 let active_call = self.active_call().unwrap();

@@ -41,7 +41,7 @@ mod imp {
         #[template_child]
         pub(super) cancel_button: TemplateChild<gtk::Button>,
         #[template_child]
-        pub(super) connected_page: TemplateChild<gtk::Box>,
+        pub(super) ongoing_page: TemplateChild<gtk::Box>,
         #[template_child]
         pub(super) duration_label: TemplateChild<gtk::Label>,
         #[template_child]
@@ -91,13 +91,7 @@ mod imp {
 
             self.end_button
                 .connect_clicked(clone!(@weak obj => move |_| {
-                    if let Some(call) = obj.call() {
-                        if let Err(err) = call.end() {
-                            tracing::error!("Failed to end call: {:?}", err);
-                        }
-                    } else {
-                        tracing::error!("No call to end");
-                    }
+                    obj.emit_by_name::<()>("ongoing-ended", &[]);
                 }));
 
             let call_signals = glib::SignalGroup::new::<Call>();
@@ -138,6 +132,7 @@ mod imp {
                     Signal::builder("incoming-accepted").build(),
                     Signal::builder("incoming-declined").build(),
                     Signal::builder("outgoing-cancelled").build(),
+                    Signal::builder("ongoing-ended").build(),
                 ]
             })
         }
@@ -183,9 +178,7 @@ impl CallPage {
         self.connect_closure(
             "incoming-accepted",
             false,
-            closure_local!(|obj: &Self| {
-                f(obj);
-            }),
+            closure_local!(|obj: &Self| f(obj)),
         )
     }
 
@@ -196,9 +189,7 @@ impl CallPage {
         self.connect_closure(
             "incoming-declined",
             false,
-            closure_local!(|obj: &Self| {
-                f(obj);
-            }),
+            closure_local!(|obj: &Self| f(obj)),
         )
     }
 
@@ -209,10 +200,15 @@ impl CallPage {
         self.connect_closure(
             "outgoing-cancelled",
             false,
-            closure_local!(|obj: &Self| {
-                f(obj);
-            }),
+            closure_local!(|obj: &Self| f(obj)),
         )
+    }
+
+    pub fn connect_ongoing_ended<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self) + 'static,
+    {
+        self.connect_closure("ongoing-ended", false, closure_local!(|obj: &Self| f(obj)))
     }
 
     fn update_caller_name_label(&self) {
@@ -232,8 +228,8 @@ impl CallPage {
             Some(CallState::Outgoing) => {
                 imp.stack.set_visible_child(&*imp.outgoing_page);
             }
-            Some(CallState::Connected) => {
-                imp.stack.set_visible_child(&*imp.connected_page);
+            Some(CallState::Ongoing) => {
+                imp.stack.set_visible_child(&*imp.ongoing_page);
             }
             None | Some(CallState::Init) | Some(CallState::Ended) => {
                 // We don't do anything here so we avoid flickering

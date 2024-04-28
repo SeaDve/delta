@@ -88,7 +88,7 @@ mod imp {
                                 imp.call_page.set_call(None::<Call>);
                                 imp.main_stack.set_visible_child(&*imp.main_page);
                             }
-                            CallState::Connected => {}
+                            CallState::Ongoing => {}
                             CallState::Init | CallState::Incoming | CallState::Outgoing => {
                                 unreachable!()
                             }
@@ -113,6 +113,14 @@ mod imp {
                     glib::spawn_future_local(async move {
                         if let Err(err) = client.call_outgoing_cancel().await {
                             tracing::error!("Failed to cancel outgoing call: {:?}", err);
+                        }
+                    });
+                }));
+            self.call_page
+                .connect_ongoing_ended(clone!(@weak client => move |_| {
+                    glib::spawn_future_local(async move {
+                        if let Err(err) = client.call_ongoing_end() {
+                            tracing::error!("Failed to end ongoing call: {:?}", err);
                         }
                     });
                 }));

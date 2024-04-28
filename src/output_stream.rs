@@ -34,6 +34,8 @@ mod imp {
         }
 
         fn close(&self, _cancellable: Option<&gio::Cancellable>) -> Result<(), glib::Error> {
+            tracing::debug!("Close called");
+
             async_std::task::block_on(self.obj().inner().close())
                 .map_err(|e| glib::Error::new(gio::IOErrorEnum::Failed, &e.to_string()))
         }
