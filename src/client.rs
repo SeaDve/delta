@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use futures_channel::oneshot;
 use futures_util::{select, FutureExt, StreamExt};
 use gtk::{
@@ -120,38 +120,52 @@ impl Client {
     }
 
     pub async fn call_request(&self, destination: PeerId) {
+        debug_assert!(self.active_call().is_none());
+
         self.publish(PublishData::CallRequest { destination }).await;
 
         let destination_peer = self.peer_list().get(&destination).unwrap();
         let call = Call::new(&destination_peer);
         call.set_state(CallState::Outgoing);
 
-        debug_assert!(self.active_call().is_none());
         self.set_active_call(Some(call.clone()));
     }
 
-    pub async fn call_outgoing_cancel(&self) {
-        if let Some(active_call) = self.active_call() {
-            active_call.set_state(CallState::Ended);
+    pub async fn call_outgoing_cancel(&self) -> Result<()> {
+        let active_call = self
+            .active_call()
+            .context("No active outgoing call to cancel")?;
+        debug_assert_eq!(active_call.state(), CallState::Outgoing);
 
-            self.publish(PublishData::CallRequestCancel {
-                destination: *active_call.peer().id(),
-            })
-            .await;
+        active_call.set_state(CallState::Ended);
 
-            self.set_active_call(None);
-        } else {
-            tracing::warn!("No active outgoing call to cancel");
-        }
+        self.publish(PublishData::CallRequestCancel {
+            destination: *active_call.peer().id(),
+        })
+        .await;
+
+        self.set_active_call(None);
+
+        Ok(())
     }
 
     pub fn call_incoming_accept(&self) {
+        debug_assert_eq!(
+            self.active_call().map(|c| c.state()),
+            Some(CallState::Incoming)
+        );
+
         let imp = self.imp();
         let tx = imp.call_incoming_response_tx.take().unwrap();
         tx.send(CallIncomingResponse::Accept).unwrap();
     }
 
     pub fn call_incoming_decline(&self) {
+        debug_assert_eq!(
+            self.active_call().map(|c| c.state()),
+            Some(CallState::Incoming)
+        );
+
         let imp = self.imp();
         let tx = imp.call_incoming_response_tx.take().unwrap();
         tx.send(CallIncomingResponse::Reject).unwrap();

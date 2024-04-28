@@ -1,4 +1,3 @@
-use futures_channel::oneshot;
 use gtk::{
     glib::{self, clone, closure_local},
     prelude::*,
@@ -9,11 +8,6 @@ use crate::{
     call::{Call, CallState},
     peer::Peer,
 };
-
-pub enum IncomingResponse {
-    Accept,
-    Decline,
-}
 
 mod imp {
     use std::{
@@ -57,8 +51,6 @@ mod imp {
         pub(super) call_bindings: glib::BindingGroup,
 
         pub(super) peer_signals: OnceCell<glib::SignalGroup>,
-
-        pub(super) incoming_response_tx: RefCell<Option<oneshot::Sender<IncomingResponse>>>,
     }
 
     #[glib::object_subclass]
@@ -85,26 +77,16 @@ mod imp {
 
             self.accept_button
                 .connect_clicked(clone!(@weak obj => move |_| {
-                    let imp = obj.imp();
-                    if let Some(tx) = imp.incoming_response_tx.take() {
-                        let _ = tx.send(IncomingResponse::Accept);
-                    } else {
-                        tracing::error!("No incoming response sender");
-                    }
+                    obj.emit_by_name::<()>("incoming-accepted", &[]);
                 }));
             self.decline_button
                 .connect_clicked(clone!(@weak obj => move |_| {
-                    let imp = obj.imp();
-                    if let Some(tx) = imp.incoming_response_tx.take() {
-                        let _ = tx.send(IncomingResponse::Decline);
-                    } else {
-                        tracing::error!("No incoming response sender");
-                    }
+                    obj.emit_by_name::<()>("incoming-declined", &[]);
                 }));
 
             self.cancel_button
                 .connect_clicked(clone!(@weak obj => move |_| {
-                    obj.emit_by_name::<()>("outgoing-cancel-requested", &[]);
+                    obj.emit_by_name::<()>("outgoing-cancelled", &[]);
                 }));
 
             self.end_button
@@ -151,7 +133,13 @@ mod imp {
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
 
-            SIGNALS.get_or_init(|| vec![Signal::builder("outgoing-cancel-requested").build()])
+            SIGNALS.get_or_init(|| {
+                vec![
+                    Signal::builder("incoming-accepted").build(),
+                    Signal::builder("incoming-declined").build(),
+                    Signal::builder("outgoing-cancelled").build(),
+                ]
+            })
         }
     }
 
@@ -188,12 +176,12 @@ impl CallPage {
         glib::Object::new()
     }
 
-    pub fn connect_outgoing_cancel_requested<F>(&self, f: F) -> glib::SignalHandlerId
+    pub fn connect_incoming_accepted<F>(&self, f: F) -> glib::SignalHandlerId
     where
         F: Fn(&Self) + 'static,
     {
         self.connect_closure(
-            "outgoing-cancel-requested",
+            "incoming-accepted",
             false,
             closure_local!(|obj: &Self| {
                 f(obj);
@@ -201,14 +189,30 @@ impl CallPage {
         )
     }
 
-    /// Note: The stack must be on `incoming_page`` when calling this method.
-    pub async fn wait_incoming_response(&self) -> IncomingResponse {
-        let imp = self.imp();
+    pub fn connect_incoming_declined<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self) + 'static,
+    {
+        self.connect_closure(
+            "incoming-declined",
+            false,
+            closure_local!(|obj: &Self| {
+                f(obj);
+            }),
+        )
+    }
 
-        let (tx, rx) = oneshot::channel();
-        imp.incoming_response_tx.replace(Some(tx));
-
-        rx.await.unwrap()
+    pub fn connect_outgoing_cancelled<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self) + 'static,
+    {
+        self.connect_closure(
+            "outgoing-cancelled",
+            false,
+            closure_local!(|obj: &Self| {
+                f(obj);
+            }),
+        )
     }
 
     fn update_caller_name_label(&self) {
@@ -222,7 +226,7 @@ impl CallPage {
         let imp = self.imp();
 
         match self.call().map(|call| call.state()) {
-            None | Some(CallState::Init) | Some(CallState::Incoming) | Some(CallState::Ended) => {
+            Some(CallState::Incoming) => {
                 imp.stack.set_visible_child(&*imp.incoming_page);
             }
             Some(CallState::Outgoing) => {
@@ -230,6 +234,9 @@ impl CallPage {
             }
             Some(CallState::Connected) => {
                 imp.stack.set_visible_child(&*imp.connected_page);
+            }
+            None | Some(CallState::Init) | Some(CallState::Ended) => {
+                // We don't do anything here so we avoid flickering
             }
         }
     }

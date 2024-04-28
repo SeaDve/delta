@@ -7,10 +7,7 @@ use crate::{
     client::{Client, MessageDestination},
     config,
     peer::Peer,
-    ui::{
-        call_page::{CallPage, IncomingResponse},
-        peer_row::PeerRow,
-    },
+    ui::{call_page::CallPage, peer_row::PeerRow},
 };
 
 const LABEL_PEER_KEY: &str = "delta-label-peer";
@@ -75,6 +72,11 @@ mod imp {
                 let imp = obj.imp();
 
                 if let Some(active_call) = client.active_call() {
+                    debug_assert!(matches!(
+                        active_call.state(),
+                        CallState::Incoming | CallState::Outgoing
+                    ));
+
                     imp.call_page.set_call(Some(active_call.clone()));
                     imp.main_stack.set_visible_child(&*imp.call_page);
 
@@ -92,27 +94,6 @@ mod imp {
                             }
                         }
                     }));
-
-                    match active_call.state() {
-                        CallState::Incoming => {
-                            glib::spawn_future_local(
-                                clone!(@weak obj, @weak client => async move {
-                                    let imp = obj.imp();
-
-                                    match imp.call_page.wait_incoming_response().await {
-                                        IncomingResponse::Accept => {
-                                            client.call_incoming_accept();
-                                        }
-                                        IncomingResponse::Decline => {
-                                            client.call_incoming_decline();
-                                        }
-                                    }
-                                }),
-                            );
-                        }
-                        CallState::Outgoing => {}
-                        CallState::Init | CallState::Ended | CallState::Connected => unreachable!(),
-                    }
                 } else {
                     imp.call_page.set_call(None::<Call>);
                     imp.main_stack.set_visible_child(&*imp.main_page);
@@ -120,9 +101,19 @@ mod imp {
             }));
 
             self.call_page
-                .connect_outgoing_cancel_requested(clone!(@weak client => move |_| {
+                .connect_incoming_accepted(clone!(@weak client => move |_| {
+                    client.call_incoming_accept();
+                }));
+            self.call_page
+                .connect_incoming_declined(clone!(@weak client => move |_| {
+                    client.call_incoming_decline();
+                }));
+            self.call_page
+                .connect_outgoing_cancelled(clone!(@weak client => move |_| {
                     glib::spawn_future_local(async move {
-                        client.call_outgoing_cancel().await;
+                        if let Err(err) = client.call_outgoing_cancel().await {
+                            tracing::error!("Failed to cancel outgoing call: {:?}", err);
+                        }
                     });
                 }));
 
@@ -140,7 +131,7 @@ mod imp {
                 clone!(@weak obj, @weak client => @default-panic, move |peer| {
                     let peer = peer.downcast_ref::<Peer>().unwrap();
                     let row = PeerRow::new(peer);
-                    row.connect_call_requested(clone!(@weak obj, @weak client => move |row| {
+                    row.connect_called(clone!(@weak obj, @weak client => move |row| {
                         let peer_id = *row.peer().id();
                         glib::spawn_future_local(async move {
                             client.call_request(peer_id).await;

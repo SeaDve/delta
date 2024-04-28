@@ -15,7 +15,7 @@ const STREAMSRC_ELEMENT_NAME: &str = "giostreamsrc";
 const PULSESRC_ELEMENT_NAME: &str = "pulsesrc";
 const STREAMSINK_ELEMENT_NAME: &str = "giostreamsink";
 
-#[derive(Default, Clone, Copy, glib::Enum)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, glib::Enum)]
 #[enum_type(name = "DeltaCallState")]
 pub enum CallState {
     #[default]
