@@ -1,4 +1,4 @@
-use std::cell::OnceCell;
+use std::{cell::OnceCell, time::Duration};
 
 use anyhow::{anyhow, ensure, Context, Result};
 use gst::prelude::*;
@@ -15,6 +15,8 @@ const STREAMSRC_ELEMENT_NAME: &str = "giostreamsrc";
 const PULSESRC_ELEMENT_NAME: &str = "pulsesrc";
 const STREAMSINK_ELEMENT_NAME: &str = "giostreamsink";
 
+const DURATION_SECS_NOTIFTY_INTERVAL: Duration = Duration::from_millis(200);
+
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, glib::Enum)]
 #[enum_type(name = "DeltaCallState")]
 pub enum CallState {
@@ -27,7 +29,11 @@ pub enum CallState {
 }
 
 mod imp {
-    use std::cell::{Cell, RefCell};
+    use std::{
+        cell::{Cell, RefCell},
+        marker::PhantomData,
+        time::Instant,
+    };
 
     use gst::bus::BusWatchGuard;
 
@@ -38,8 +44,13 @@ mod imp {
     pub struct Call {
         #[property(get, set, construct_only)]
         pub(super) peer: OnceCell<Peer>,
-        #[property(get, set, builder(CallState::default()))]
+        #[property(get, set = Self::set_state, explicit_notify, builder(CallState::default()))]
         pub(super) state: Cell<CallState>,
+        #[property(get = Self::duration_secs)]
+        pub(super) duration_secs: PhantomData<u64>,
+
+        pub(super) ongoing_time: Cell<Option<Instant>>,
+        pub(super) ongoing_timer_id: RefCell<Option<glib::SourceId>>,
 
         pub(super) input: RefCell<Option<(InputStream, gst::Pipeline, BusWatchGuard)>>,
         pub(super) output: RefCell<Option<(OutputStream, gst::Pipeline, BusWatchGuard)>>,
@@ -62,6 +73,50 @@ mod imp {
             tracing::debug!("Started to end call on dispose");
 
             obj.start_end();
+        }
+    }
+
+    impl Call {
+        fn set_state(&self, state: CallState) {
+            let obj = self.obj();
+
+            if state == obj.state() {
+                return;
+            }
+
+            match state {
+                CallState::Ongoing => {
+                    debug_assert!(self.ongoing_time.get().is_none());
+
+                    self.ongoing_time.set(Some(Instant::now()));
+
+                    let source_id = glib::timeout_add_local(
+                        DURATION_SECS_NOTIFTY_INTERVAL,
+                        clone!(@weak obj => @default-panic, move || {
+                            obj.notify_duration_secs();
+                            glib::ControlFlow::Continue
+                        }),
+                    );
+                    self.ongoing_timer_id.replace(Some(source_id));
+                }
+                _ => {
+                    self.ongoing_time.set(None);
+
+                    if let Some(source_id) = self.ongoing_timer_id.take() {
+                        source_id.remove();
+                    }
+                }
+            }
+
+            self.state.set(state);
+            obj.notify_state();
+        }
+
+        fn duration_secs(&self) -> u64 {
+            self.ongoing_time
+                .get()
+                .map(|start_time| start_time.elapsed().as_secs())
+                .unwrap_or(0)
         }
     }
 }

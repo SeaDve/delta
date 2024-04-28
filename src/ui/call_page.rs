@@ -101,6 +101,12 @@ mod imp {
                     obj.update_stack();
                 }),
             );
+            call_signals.connect_notify_local(
+                Some("duration-secs"),
+                clone!(@weak obj => move |_, _| {
+                    obj.update_duration_label();
+                }),
+            );
             self.call_signals.set(call_signals).unwrap();
 
             let peer_signals = glib::SignalGroup::new::<Peer>();
@@ -116,8 +122,9 @@ mod imp {
                 .bind("peer", &peer_signals, "target")
                 .build();
 
-            obj.update_caller_name_label();
             obj.update_stack();
+            obj.update_caller_name_label();
+            obj.update_duration_label();
         }
 
         fn dispose(&self) {
@@ -236,4 +243,20 @@ impl CallPage {
             }
         }
     }
+
+    fn update_duration_label(&self) {
+        let imp = self.imp();
+
+        let duration_secs = self.call().map(|call| call.duration_secs()).unwrap_or(0);
+        imp.duration_label.set_label(&format_time(duration_secs));
+    }
+}
+
+/// Formats time in MM:SS.
+///
+/// The MM part will be more than 2 digits if the time is >= 100 minutes.
+fn format_time(secs: u64) -> String {
+    let seconds_display = secs % 60;
+    let minutes_display = secs / 60;
+    format!("{:02}∶{:02}", minutes_display, seconds_display)
 }
