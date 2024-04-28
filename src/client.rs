@@ -47,10 +47,13 @@ mod imp {
 
     use super::*;
 
-    #[derive(Default)]
+    #[derive(Default, glib::Properties)]
+    #[properties(wrapper_type = super::Client)]
     pub struct Client {
-        pub(super) command_tx: OnceLock<async_channel::Sender<Command>>,
+        #[property(get)]
         pub(super) active_call: RefCell<Option<Call>>,
+
+        pub(super) command_tx: OnceLock<async_channel::Sender<Command>>,
         pub(super) call_incoming_response_tx:
             RefCell<Option<oneshot::Sender<CallIncomingResponse>>>,
 
@@ -63,6 +66,7 @@ mod imp {
         type Type = super::Client;
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for Client {
         fn constructed(&self) {
             self.parent_constructed();
@@ -80,14 +84,9 @@ mod imp {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
 
             SIGNALS.get_or_init(|| {
-                vec![
-                    Signal::builder("message-received")
-                        .param_types([MessageReceived::static_type()])
-                        .build(),
-                    Signal::builder("call-incoming")
-                        .param_types([Call::static_type()])
-                        .build(),
-                ]
+                vec![Signal::builder("message-received")
+                    .param_types([MessageReceived::static_type()])
+                    .build()]
             })
         }
     }
@@ -113,20 +112,6 @@ impl Client {
         )
     }
 
-    /// The callback should return `true` to accept the call, or `false` to reject it.
-    ///
-    /// The peer argument is the peer that is calling.
-    pub fn connect_call_incoming<F>(&self, f: F) -> glib::SignalHandlerId
-    where
-        F: Fn(&Self, &Call) + 'static,
-    {
-        self.connect_closure(
-            "call-incoming",
-            false,
-            closure_local!(|obj: &Self, call: &Call| f(obj, call)),
-        )
-    }
-
     pub fn peer_list(&self) -> &PeerList {
         &self.imp().peer_list
     }
@@ -139,17 +124,15 @@ impl Client {
         .await;
     }
 
-    pub async fn call_request(&self, destination: PeerId) -> Call {
-        let imp = self.imp();
-
+    pub async fn call_request(&self, destination: PeerId) {
         self.publish(PublishData::CallRequest { destination }).await;
 
         let destination_peer = self.peer_list().get(&destination).unwrap();
         let call = Call::new(&destination_peer);
         call.set_state(CallState::Outgoing);
-        let prev_call = imp.active_call.replace(Some(call.clone()));
-        debug_assert_eq!(prev_call.map(|d| *d.peer().id()), None);
-        call
+
+        debug_assert!(self.active_call().is_none());
+        self.set_active_call(Some(call.clone()));
     }
 
     pub fn call_incoming_accept(&self) {
@@ -162,6 +145,11 @@ impl Client {
         let imp = self.imp();
         let tx = imp.call_incoming_response_tx.take().unwrap();
         tx.send(CallIncomingResponse::Reject).unwrap();
+    }
+
+    fn set_active_call(&self, call: Option<Call>) {
+        self.imp().active_call.replace(call);
+        self.notify_active_call();
     }
 
     async fn publish(&self, data: PublishData) {
@@ -226,12 +214,10 @@ impl Client {
             .accept(AUDIO_STREAM_PROTOCOL)?;
 
         glib::spawn_future_local(clone!(@weak self as obj => async move {
-            let imp = obj.imp();
-
             while let Some((their_peer_id, output_stream)) = incoming_streams.next().await {
                 tracing::debug!("Incoming stream from {}", their_peer_id);
 
-                if let Some(active_call) = imp.active_call.borrow().as_ref() {
+                if let Some(active_call) = obj.active_call() {
                     if active_call.peer().id() == &their_peer_id {
                         if let Err(err) = active_call.set_output_stream(OutputStream::new(output_stream))  {
                             tracing::error!("Failed to set output stream: {:?}", err);
@@ -354,7 +340,7 @@ impl Client {
                     PublishData::CallRequest { ref destination }
                         if destination == swarm.local_peer_id() =>
                     {
-                        let had_active_call = imp.active_call.borrow().is_some();
+                        let had_active_call = self.active_call().is_some();
 
                         let (response_tx, response_rx) = oneshot::channel();
 
@@ -362,9 +348,8 @@ impl Client {
                         let peer = self.peer_list().get(&their_peer_id).unwrap();
                         let call = Call::new(&peer);
                         call.set_state(CallState::Incoming);
-                        imp.active_call.replace(Some(call.clone()));
 
-                        self.emit_by_name::<()>("call-incoming", &[&call]);
+                        self.set_active_call(Some(call.clone()));
 
                         let response = response_rx.await.unwrap();
 
@@ -394,9 +379,8 @@ impl Client {
                             })
                             .await;
 
-                            call.set_state(CallState::Stopped);
-
-                            imp.active_call.replace(None);
+                            call.set_state(CallState::Ended);
+                            self.set_active_call(None);
                         }
                     }
                     PublishData::CallRequestResponse {
@@ -417,19 +401,14 @@ impl Client {
                                     .await
                                     .map_err(|err| anyhow!(err))?;
 
-                                let active_call = imp.active_call.borrow();
-                                let active_call = active_call.as_ref().unwrap();
+                                let active_call = self.active_call().unwrap();
                                 active_call.set_input_stream(InputStream::new(input_stream))?;
                                 active_call.set_state(CallState::Connected);
                             }
                             CallRequestResponse::Reject => {
-                                imp.active_call
-                                    .borrow()
-                                    .as_ref()
-                                    .unwrap()
-                                    .set_state(CallState::Stopped);
-
-                                imp.active_call.replace(None);
+                                let active_call = self.active_call().unwrap();
+                                active_call.set_state(CallState::Ended);
+                                self.set_active_call(None);
                             }
                         }
                     }

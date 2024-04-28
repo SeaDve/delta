@@ -71,31 +71,52 @@ mod imp {
 
             let client = Client::new();
 
-            client.connect_call_incoming(clone!(@weak obj => @default-panic, move |client, call| {
-                glib::spawn_future_local(clone!(@weak obj, @weak client, @weak call =>  async move {
-                    let imp = obj.imp();
+            client.connect_active_call_notify(clone!(@weak obj => move |client| {
+                let imp = obj.imp();
 
-                    imp.call_page.set_call(Some(call.clone()));
+                if let Some(active_call) = client.active_call() {
+                    imp.call_page.set_call(Some(active_call.clone()));
                     imp.main_stack.set_visible_child(&*imp.call_page);
 
-                    match imp.call_page.wait_incoming_response().await  {
-                        IncomingResponse::Accept => {
-                            client.call_incoming_accept();
-                        }
-                        IncomingResponse::Decline => {
-                            client.call_incoming_decline();
-                        }
-                    }
-
-                    call.connect_state_notify(clone!(@weak obj => move |call| {
+                    active_call.connect_state_notify(clone!(@weak obj => move |call| {
                         let imp = obj.imp();
 
-                        if call.state() == CallState::Stopped {
-                            imp.call_page.set_call(None::<Call>);
-                            imp.main_stack.set_visible_child(&*imp.main_page);
+                        match call.state() {
+                            CallState::Ended => {
+                                imp.call_page.set_call(None::<Call>);
+                                imp.main_stack.set_visible_child(&*imp.main_page);
+                            }
+                            CallState::Connected => {}
+                            CallState::Init | CallState::Incoming | CallState::Outgoing => {
+                                unreachable!()
+                            }
                         }
                     }));
-                }));
+
+                    match active_call.state() {
+                        CallState::Incoming => {
+                            glib::spawn_future_local(
+                                clone!(@weak obj, @weak client => async move {
+                                    let imp = obj.imp();
+
+                                    match imp.call_page.wait_incoming_response().await {
+                                        IncomingResponse::Accept => {
+                                            client.call_incoming_accept();
+                                        }
+                                        IncomingResponse::Decline => {
+                                            client.call_incoming_decline();
+                                        }
+                                    }
+                                }),
+                            );
+                        }
+                        CallState::Outgoing => {}
+                        CallState::Init | CallState::Ended | CallState::Connected => unreachable!(),
+                    }
+                } else {
+                    imp.call_page.set_call(None::<Call>);
+                    imp.main_stack.set_visible_child(&*imp.main_page);
+                }
             }));
 
             let placeholder_label = gtk::Label::builder()
@@ -115,19 +136,7 @@ mod imp {
                     row.connect_call_requested(clone!(@weak obj, @weak client => move |row| {
                         let peer_id = *row.peer().id();
                         glib::spawn_future_local(async move {
-                            let imp = obj.imp();
-                            let call = client.call_request(peer_id).await;
-                            imp.main_stack.set_visible_child(&*imp.call_page);
-                            imp.call_page.set_call(Some(call.clone()));
-
-                            call.connect_state_notify(clone!(@weak obj => move |call| {
-                                let imp = obj.imp();
-
-                                if call.state() == CallState::Stopped {
-                                    imp.call_page.set_call(None::<Call>);
-                                    imp.main_stack.set_visible_child(&*imp.main_page);
-                                }
-                            }));
+                            client.call_request(peer_id).await;
                         });
                     }));
                     row.upcast()

@@ -193,7 +193,7 @@ impl CallPage {
         let imp = self.imp();
 
         match self.call().map(|call| call.state()) {
-            None | Some(CallState::Stopped) | Some(CallState::Incoming) => {
+            None | Some(CallState::Init) | Some(CallState::Incoming) | Some(CallState::Ended) => {
                 imp.stack.set_visible_child(&*imp.incoming_page);
             }
             Some(CallState::Outgoing) => {
