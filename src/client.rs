@@ -300,7 +300,7 @@ impl Client {
                 message: raw_message,
                 ..
             })) => {
-                tracing::trace!("received message from {}", their_peer_id);
+                tracing::debug!("received message from {}", their_peer_id);
 
                 match serde_json::from_slice(&raw_message.data)? {
                     PublishData::Name { name } => {
