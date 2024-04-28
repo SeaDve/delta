@@ -128,10 +128,10 @@ mod imp {
 
             self.peer_list_box.bind_model(
                 Some(client.peer_list()),
-                clone!(@weak obj, @weak client => @default-panic, move |peer| {
+                clone!(@weak client => @default-panic, move |peer| {
                     let peer = peer.downcast_ref::<Peer>().unwrap();
                     let row = PeerRow::new(peer);
-                    row.connect_called(clone!(@weak obj, @weak client => move |row| {
+                    row.connect_called(clone!(@weak client => move |row| {
                         let peer_id = *row.peer().id();
                         glib::spawn_future_local(async move {
                             client.call_request(peer_id).await;
