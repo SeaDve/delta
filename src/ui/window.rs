@@ -135,7 +135,9 @@ mod imp {
                     row.connect_called(clone!(@weak client => move |row| {
                         let peer_id = *row.peer().id();
                         glib::spawn_future_local(async move {
-                            client.call_request(peer_id).await;
+                            if let Err(err) = client.call_request(peer_id).await  {
+                                tracing::error!("Failed to request call: {:?}", err);
+                            }
                         });
                     }));
 

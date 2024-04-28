@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, ensure, Context, Result};
 use futures_channel::oneshot;
 use futures_util::{select, FutureExt, StreamExt};
 use gtk::{
@@ -119,8 +119,8 @@ impl Client {
         .await;
     }
 
-    pub async fn call_request(&self, destination: PeerId) {
-        debug_assert!(self.active_call().is_none());
+    pub async fn call_request(&self, destination: PeerId) -> Result<()> {
+        ensure!(self.active_call().is_none(), "Already in a call");
 
         self.publish(PublishData::CallRequest { destination }).await;
 
@@ -129,6 +129,8 @@ impl Client {
         call.set_state(CallState::Outgoing);
 
         self.set_active_call(Some(call.clone()));
+
+        Ok(())
     }
 
     pub async fn call_outgoing_cancel(&self) -> Result<()> {
