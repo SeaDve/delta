@@ -11,7 +11,7 @@ use gtk::{
 use libp2p::{
     gossipsub, mdns,
     swarm::{NetworkBehaviour, SwarmEvent},
-    PeerId, Stream, StreamProtocol, Swarm, SwarmBuilder,
+    PeerId, StreamProtocol, Swarm, SwarmBuilder,
 };
 use libp2p_stream as stream;
 use serde::{Deserialize, Serialize};
@@ -184,12 +184,6 @@ impl Client {
         self.send_command(Command::Publish(data)).await;
     }
 
-    async fn open_stream(&self, peer_id: PeerId) -> Result<Stream> {
-        let (tx, rx) = oneshot::channel();
-        self.send_command(Command::OpenStream(peer_id, tx)).await;
-        rx.await.unwrap()
-    }
-
     async fn send_command(&self, command: Command) {
         let imp = self.imp();
 
@@ -296,16 +290,6 @@ impl Client {
                     .gossipsub
                     .publish(topic.clone(), data_bytes)?;
             }
-            Command::OpenStream(their_peer_id, tx) => {
-                let stream = swarm
-                    .behaviour()
-                    .stream
-                    .new_control()
-                    .open_stream(their_peer_id, AUDIO_STREAM_PROTOCOL)
-                    .await
-                    .map_err(|err| anyhow!(err));
-                tx.send(stream).unwrap();
-            }
         }
 
         Ok(())
@@ -402,6 +386,8 @@ impl Client {
 
                         self.set_active_call(Some(call.clone()));
 
+                        let mut stream_control = swarm.behaviour().stream.new_control();
+
                         // Spawn a task here so we don't block the loop while waiting for the response
                         glib::spawn_future_local(clone!(@weak self as obj => async move {
                             let response = select! {
@@ -414,7 +400,10 @@ impl Client {
                             if response == CallIncomingResponse::Accept && !had_active_call {
                                 tracing::debug!("Opening output stream to {their_peer_id}");
 
-                                let input_stream = match obj.open_stream(their_peer_id).await {
+                                let input_stream = match stream_control
+                                    .open_stream(their_peer_id, AUDIO_STREAM_PROTOCOL)
+                                    .await
+                                {
                                     Ok(stream) => stream,
                                     Err(err) => {
                                         tracing::error!("Failed to open output stream: {:?}", err);
@@ -560,7 +549,6 @@ enum PublishData {
 
 enum Command {
     Publish(PublishData),
-    OpenStream(PeerId, oneshot::Sender<Result<Stream>>),
 }
 
 #[derive(NetworkBehaviour)]
