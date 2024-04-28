@@ -17,7 +17,11 @@ use libp2p_stream as stream;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    call::Call, config, input_stream::InputStream, output_stream::OutputStream, peer::Peer,
+    call::{Call, CallState},
+    config,
+    input_stream::InputStream,
+    output_stream::OutputStream,
+    peer::Peer,
     peer_list::PeerList,
 };
 
@@ -81,12 +85,6 @@ mod imp {
                         .param_types([MessageReceived::static_type()])
                         .build(),
                     Signal::builder("call-incoming")
-                        .param_types([Peer::static_type()])
-                        .build(),
-                    Signal::builder("call-incoming-accepted")
-                        .param_types([Call::static_type()])
-                        .build(),
-                    Signal::builder("call-incoming-declined")
                         .param_types([Call::static_type()])
                         .build(),
                 ]
@@ -120,32 +118,10 @@ impl Client {
     /// The peer argument is the peer that is calling.
     pub fn connect_call_incoming<F>(&self, f: F) -> glib::SignalHandlerId
     where
-        F: Fn(&Self, &Peer) + 'static,
+        F: Fn(&Self, &Call) + 'static,
     {
         self.connect_closure(
             "call-incoming",
-            false,
-            closure_local!(|obj: &Self, peer: &Peer| f(obj, peer)),
-        )
-    }
-
-    pub fn connect_call_incoming_accepted<F>(&self, f: F) -> glib::SignalHandlerId
-    where
-        F: Fn(&Self, &Call) + 'static,
-    {
-        self.connect_closure(
-            "call-incoming-accepted",
-            false,
-            closure_local!(|obj: &Self, call: &Call| f(obj, call)),
-        )
-    }
-
-    pub fn connect_call_incoming_declined<F>(&self, f: F) -> glib::SignalHandlerId
-    where
-        F: Fn(&Self, &Call) + 'static,
-    {
-        self.connect_closure(
-            "call-incoming-declined",
             false,
             closure_local!(|obj: &Self, call: &Call| f(obj, call)),
         )
@@ -163,9 +139,17 @@ impl Client {
         .await;
     }
 
-    pub async fn call_request(&self, destination: PeerId) {
-        self.send_command(Command::Publish(PublishData::CallRequest { destination }))
-            .await;
+    pub async fn call_request(&self, destination: PeerId) -> Call {
+        let imp = self.imp();
+
+        self.publish(PublishData::CallRequest { destination }).await;
+
+        let destination_peer = self.peer_list().get(&destination).unwrap();
+        let call = Call::new(&destination_peer);
+        call.set_state(CallState::Outgoing);
+        let prev_call = imp.active_call.replace(Some(call.clone()));
+        debug_assert_eq!(prev_call.map(|d| *d.peer().id()), None);
+        call
     }
 
     pub fn call_incoming_accept(&self) {
@@ -284,8 +268,6 @@ impl Client {
         topic: &gossipsub::IdentTopic,
         command: Command,
     ) -> Result<()> {
-        let imp = self.imp();
-
         match command {
             Command::Publish(data) => {
                 let data_bytes = serde_json::to_vec(&data)?;
@@ -293,12 +275,6 @@ impl Client {
                     .behaviour_mut()
                     .gossipsub
                     .publish(topic.clone(), data_bytes)?;
-
-                if let PublishData::CallRequest { destination } = data {
-                    let destination_peer = self.peer_list().get(&destination).unwrap();
-                    let prev_call = imp.active_call.replace(Some(Call::new(&destination_peer)));
-                    debug_assert_eq!(prev_call.map(|d| *d.peer().id()), None);
-                }
             }
         }
 
@@ -378,16 +354,21 @@ impl Client {
                     PublishData::CallRequest { ref destination }
                         if destination == swarm.local_peer_id() =>
                     {
+                        let had_active_call = imp.active_call.borrow().is_some();
+
                         let (response_tx, response_rx) = oneshot::channel();
 
                         imp.call_incoming_response_tx.replace(Some(response_tx));
                         let peer = self.peer_list().get(&their_peer_id).unwrap();
-                        self.emit_by_name::<()>("call-incoming", &[&peer]);
+                        let call = Call::new(&peer);
+                        call.set_state(CallState::Incoming);
+                        imp.active_call.replace(Some(call.clone()));
+
+                        self.emit_by_name::<()>("call-incoming", &[&call]);
 
                         let response = response_rx.await.unwrap();
-                        let has_active_call = imp.active_call.borrow().is_some();
 
-                        if response == CallIncomingResponse::Accept && !has_active_call {
+                        if response == CallIncomingResponse::Accept && !had_active_call {
                             tracing::debug!("Opening output stream to {their_peer_id}");
 
                             let input_stream = swarm
@@ -398,9 +379,8 @@ impl Client {
                                 .await
                                 .map_err(|err| anyhow!(err))?;
 
-                            let call = Call::new(&peer);
                             call.set_input_stream(InputStream::new(input_stream))?;
-                            imp.active_call.replace(Some(call));
+                            call.set_state(CallState::Connected);
 
                             self.publish(PublishData::CallRequestResponse {
                                 destination: their_peer_id,
@@ -413,6 +393,10 @@ impl Client {
                                 response: CallRequestResponse::Reject,
                             })
                             .await;
+
+                            call.set_state(CallState::Stopped);
+
+                            imp.active_call.replace(None);
                         }
                     }
                     PublishData::CallRequestResponse {
@@ -433,13 +417,18 @@ impl Client {
                                     .await
                                     .map_err(|err| anyhow!(err))?;
 
+                                let active_call = imp.active_call.borrow();
+                                let active_call = active_call.as_ref().unwrap();
+                                active_call.set_input_stream(InputStream::new(input_stream))?;
+                                active_call.set_state(CallState::Connected);
+                            }
+                            CallRequestResponse::Reject => {
                                 imp.active_call
                                     .borrow()
                                     .as_ref()
                                     .unwrap()
-                                    .set_input_stream(InputStream::new(input_stream))?;
-                            }
-                            CallRequestResponse::Reject => {
+                                    .set_state(CallState::Stopped);
+
                                 imp.active_call.replace(None);
                             }
                         }

@@ -15,8 +15,18 @@ const STREAMSRC_ELEMENT_NAME: &str = "giostreamsrc";
 const PULSESRC_ELEMENT_NAME: &str = "pulsesrc";
 const STREAMSINK_ELEMENT_NAME: &str = "giostreamsink";
 
+#[derive(Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
+#[enum_type(name = "DeltaCallState")]
+pub enum CallState {
+    #[default]
+    Stopped,
+    Incoming,
+    Outgoing,
+    Connected,
+}
+
 mod imp {
-    use std::cell::RefCell;
+    use std::cell::{Cell, RefCell};
 
     use gst::bus::BusWatchGuard;
 
@@ -27,6 +37,8 @@ mod imp {
     pub struct Call {
         #[property(get, set, construct_only)]
         pub(super) peer: OnceCell<Peer>,
+        #[property(get, set, builder(CallState::default()))]
+        pub(super) state: Cell<CallState>,
 
         pub(super) input: RefCell<Option<(InputStream, gst::Pipeline, BusWatchGuard)>>,
         pub(super) output: RefCell<Option<(OutputStream, gst::Pipeline, BusWatchGuard)>>,
@@ -43,11 +55,9 @@ mod imp {
         fn dispose(&self) {
             let obj = self.obj();
 
-            glib::spawn_future_local(clone!(@weak obj => async move {
-                if let Err(err) = obj.end().await {
-                    tracing::error!("Failed to close call on dispose: {}", err);
-                }
-            }));
+            if let Err(err) = obj.end() {
+                tracing::error!("Failed to end call on dispose: {}", err);
+            }
         }
     }
 }
@@ -61,7 +71,7 @@ impl Call {
         glib::Object::builder().property("peer", peer).build()
     }
 
-    pub async fn end(&self) -> Result<()> {
+    pub fn end(&self) -> Result<()> {
         let imp = self.imp();
 
         if let Some((input_stream, pipeline, _)) = imp.input.take() {
@@ -93,6 +103,8 @@ impl Call {
                 }
             });
         }
+
+        self.set_state(CallState::Stopped);
 
         Ok(())
     }

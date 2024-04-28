@@ -3,10 +3,14 @@ use gtk::glib::{self, clone};
 
 use crate::{
     application::Application,
+    call::{Call, CallState},
     client::{Client, MessageDestination},
     config,
     peer::Peer,
-    ui::{call_page::CallPage, peer_row::PeerRow},
+    ui::{
+        call_page::{CallPage, IncomingResponse},
+        peer_row::PeerRow,
+    },
 };
 
 const LABEL_PEER_KEY: &str = "delta-label-peer";
@@ -67,19 +71,32 @@ mod imp {
 
             let client = Client::new();
 
-            client.connect_call_incoming(clone!(@weak obj => @default-panic, move |_, peer| {
-                // TODO transition call page to incoming state
+            client.connect_call_incoming(clone!(@weak obj => @default-panic, move |client, call| {
+                glib::spawn_future_local(clone!(@weak obj, @weak client, @weak call =>  async move {
+                    let imp = obj.imp();
+
+                    imp.call_page.set_call(Some(call.clone()));
+                    imp.main_stack.set_visible_child(&*imp.call_page);
+
+                    match imp.call_page.wait_incoming_response().await  {
+                        IncomingResponse::Accept => {
+                            client.call_incoming_accept();
+                        }
+                        IncomingResponse::Decline => {
+                            client.call_incoming_decline();
+                        }
+                    }
+
+                    call.connect_state_notify(clone!(@weak obj => move |call| {
+                        let imp = obj.imp();
+
+                        if call.state() == CallState::Stopped {
+                            imp.call_page.set_call(None::<Call>);
+                            imp.main_stack.set_visible_child(&*imp.main_page);
+                        }
+                    }));
+                }));
             }));
-            client.connect_call_incoming_accepted(
-                clone!(@weak obj => @default-panic, move |_, call| {
-                    // TODO transition call page to connected state
-                }),
-            );
-            client.connect_call_incoming_declined(
-                clone!(@weak obj => @default-panic, move |_, call| {
-                    // TODO move back to main page
-                }),
-            );
 
             let placeholder_label = gtk::Label::builder()
                 .margin_top(12)
@@ -96,10 +113,21 @@ mod imp {
                     let peer = peer.downcast_ref::<Peer>().unwrap();
                     let row = PeerRow::new(peer);
                     row.connect_call_requested(clone!(@weak obj, @weak client => move |row| {
-                        // TODO transition call page to outgoing state
                         let peer_id = *row.peer().id();
                         glib::spawn_future_local(async move {
-                            client.call_request(peer_id).await;
+                            let imp = obj.imp();
+                            let call = client.call_request(peer_id).await;
+                            imp.main_stack.set_visible_child(&*imp.call_page);
+                            imp.call_page.set_call(Some(call.clone()));
+
+                            call.connect_state_notify(clone!(@weak obj => move |call| {
+                                let imp = obj.imp();
+
+                                if call.state() == CallState::Stopped {
+                                    imp.call_page.set_call(None::<Call>);
+                                    imp.main_stack.set_visible_child(&*imp.main_page);
+                                }
+                            }));
                         });
                     }));
                     row.upcast()
