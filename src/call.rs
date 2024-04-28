@@ -57,7 +57,7 @@ mod imp {
             let obj = self.obj();
 
             if let Err(err) = obj.end() {
-                tracing::error!("Failed to end call on dispose: {}", err);
+                tracing::error!("Failed to end call on dispose: {:?}", err);
             }
         }
     }
@@ -77,7 +77,7 @@ impl Call {
 
         if let Some((input_stream, pipeline, _)) = imp.input.take() {
             if let Err(err) = pipeline.set_state(gst::State::Null) {
-                tracing::error!("Failed to set input pipeline to null: {}", err);
+                tracing::error!("Failed to set input pipeline to null: {:?}", err);
             }
 
             glib::spawn_future_local(async move {
@@ -85,14 +85,14 @@ impl Call {
                     .close_future(glib::Priority::DEFAULT_IDLE)
                     .await
                 {
-                    tracing::error!("Failed to close input stream: {}", err);
+                    tracing::error!("Failed to close input stream: {:?}", err);
                 }
             });
         }
 
         if let Some((output_stream, pipeline, _)) = imp.output.take() {
             if let Err(err) = pipeline.set_state(gst::State::Null) {
-                tracing::error!("Failed to set output pipeline to null: {}", err);
+                tracing::error!("Failed to set output pipeline to null: {:?}", err);
             }
 
             glib::spawn_future_local(async move {
@@ -100,7 +100,7 @@ impl Call {
                     .close_future(glib::Priority::DEFAULT_IDLE)
                     .await
                 {
-                    tracing::error!("Failed to close output stream: {}", err);
+                    tracing::error!("Failed to close output stream: {:?}", err);
                 }
             });
         }

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use futures_channel::oneshot;
-use futures_util::{FutureExt, StreamExt};
+use futures_util::{select, FutureExt, StreamExt};
 use gtk::{
     glib::{self, clone, closure_local},
     prelude::*,
@@ -11,7 +11,7 @@ use gtk::{
 use libp2p::{
     gossipsub, mdns,
     swarm::{NetworkBehaviour, SwarmEvent},
-    PeerId, StreamProtocol, Swarm, SwarmBuilder,
+    PeerId, Stream, StreamProtocol, Swarm, SwarmBuilder,
 };
 use libp2p_stream as stream;
 use serde::{Deserialize, Serialize};
@@ -34,12 +34,6 @@ pub struct MessageReceived {
     pub message: String,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum CallIncomingResponse {
-    Accept,
-    Reject,
-}
-
 mod imp {
     use std::{cell::RefCell, sync::OnceLock};
 
@@ -56,6 +50,7 @@ mod imp {
         pub(super) command_tx: OnceLock<async_channel::Sender<Command>>,
         pub(super) call_incoming_response_tx:
             RefCell<Option<oneshot::Sender<CallIncomingResponse>>>,
+        pub(super) call_incoming_cancel_tx: RefCell<Option<oneshot::Sender<()>>>,
 
         pub(super) peer_list: PeerList,
     }
@@ -135,6 +130,21 @@ impl Client {
         self.set_active_call(Some(call.clone()));
     }
 
+    pub async fn call_outgoing_cancel(&self) {
+        if let Some(active_call) = self.active_call() {
+            active_call.set_state(CallState::Ended);
+
+            self.publish(PublishData::CallRequestCancel {
+                destination: *active_call.peer().id(),
+            })
+            .await;
+
+            self.set_active_call(None);
+        } else {
+            tracing::warn!("No active outgoing call to cancel");
+        }
+    }
+
     pub fn call_incoming_accept(&self) {
         let imp = self.imp();
         let tx = imp.call_incoming_response_tx.take().unwrap();
@@ -153,7 +163,15 @@ impl Client {
     }
 
     async fn publish(&self, data: PublishData) {
+        tracing::debug!("Publishing data: {:?}", data);
+
         self.send_command(Command::Publish(data)).await;
+    }
+
+    async fn open_stream(&self, peer_id: PeerId) -> Result<Stream> {
+        let (tx, rx) = oneshot::channel();
+        self.send_command(Command::OpenStream(peer_id, tx)).await;
+        rx.await.unwrap()
     }
 
     async fn send_command(&self, command: Command) {
@@ -262,6 +280,16 @@ impl Client {
                     .gossipsub
                     .publish(topic.clone(), data_bytes)?;
             }
+            Command::OpenStream(their_peer_id, tx) => {
+                let stream = swarm
+                    .behaviour()
+                    .stream
+                    .new_control()
+                    .open_stream(their_peer_id, AUDIO_STREAM_PROTOCOL)
+                    .await
+                    .map_err(|err| anyhow!(err));
+                tx.send(stream).unwrap();
+            }
         }
 
         Ok(())
@@ -340,47 +368,82 @@ impl Client {
                     PublishData::CallRequest { ref destination }
                         if destination == swarm.local_peer_id() =>
                     {
-                        let had_active_call = self.active_call().is_some();
+                        let (call_incoming_response_tx, mut call_incoming_response_rx) =
+                            oneshot::channel();
+                        imp.call_incoming_response_tx
+                            .replace(Some(call_incoming_response_tx));
 
-                        let (response_tx, response_rx) = oneshot::channel();
+                        let (call_incoming_cancel_tx, mut call_incoming_cancel_rx) =
+                            oneshot::channel();
+                        imp.call_incoming_cancel_tx
+                            .replace(Some(call_incoming_cancel_tx));
 
-                        imp.call_incoming_response_tx.replace(Some(response_tx));
                         let peer = self.peer_list().get(&their_peer_id).unwrap();
                         let call = Call::new(&peer);
                         call.set_state(CallState::Incoming);
 
+                        let had_active_call = self.active_call().is_some();
+
                         self.set_active_call(Some(call.clone()));
 
-                        let response = response_rx.await.unwrap();
+                        // Spawn a task here so we don't block the loop while waiting for the response
+                        glib::spawn_future_local(clone!(@weak self as obj => async move {
+                            let response = select! {
+                                response = call_incoming_response_rx => response.unwrap(),
+                                _ = call_incoming_cancel_rx => CallIncomingResponse::Cancelled,
+                            };
 
-                        if response == CallIncomingResponse::Accept && !had_active_call {
-                            tracing::debug!("Opening output stream to {their_peer_id}");
+                            tracing::debug!("Received call request: {:?}", response);
 
-                            let input_stream = swarm
-                                .behaviour()
-                                .stream
-                                .new_control()
-                                .open_stream(their_peer_id, AUDIO_STREAM_PROTOCOL)
-                                .await
-                                .map_err(|err| anyhow!(err))?;
+                            if response == CallIncomingResponse::Accept && !had_active_call {
+                                tracing::debug!("Opening output stream to {their_peer_id}");
 
-                            call.set_input_stream(InputStream::new(input_stream))?;
-                            call.set_state(CallState::Connected);
+                                let input_stream = match obj.open_stream(their_peer_id).await {
+                                    Ok(stream) => stream,
+                                    Err(err) => {
+                                        tracing::error!("Failed to open output stream: {:?}", err);
+                                        return;
+                                    }
+                                };
 
-                            self.publish(PublishData::CallRequestResponse {
-                                destination: their_peer_id,
-                                response: CallRequestResponse::Accept,
-                            })
-                            .await;
+                                if let Err(err) =
+                                    call.set_input_stream(InputStream::new(input_stream))
+                                {
+                                    tracing::error!("Failed to set input stream: {:?}", err);
+                                    return;
+                                }
+
+                                call.set_state(CallState::Connected);
+
+                                obj.publish(PublishData::CallRequestResponse {
+                                    destination: their_peer_id,
+                                    response: CallRequestResponse::Accept,
+                                })
+                                .await;
+                            } else {
+                                if response != CallIncomingResponse::Cancelled {
+                                    obj.publish(PublishData::CallRequestResponse {
+                                        destination: their_peer_id,
+                                        response: CallRequestResponse::Reject,
+                                    })
+                                    .await;
+                                }
+
+                                call.set_state(CallState::Ended);
+                                obj.set_active_call(None);
+                            }
+                        }));
+                    }
+                    PublishData::CallRequestCancel { ref destination }
+                        if destination == swarm.local_peer_id() =>
+                    {
+                        tracing::debug!("Received call request cancel: {their_peer_id}");
+
+                        if self.active_call().is_some() {
+                            let tx = imp.call_incoming_cancel_tx.take().unwrap();
+                            tx.send(()).unwrap();
                         } else {
-                            self.publish(PublishData::CallRequestResponse {
-                                destination: their_peer_id,
-                                response: CallRequestResponse::Reject,
-                            })
-                            .await;
-
-                            call.set_state(CallState::Ended);
-                            self.set_active_call(None);
+                            tracing::warn!("Received call request cancel without active call");
                         }
                     }
                     PublishData::CallRequestResponse {
@@ -410,6 +473,7 @@ impl Client {
                                 active_call.set_state(CallState::Ended);
                                 self.set_active_call(None);
                             }
+                            CallRequestResponse::Cancelled => unreachable!(),
                         }
                     }
                     other_published_data => {
@@ -447,6 +511,14 @@ pub enum MessageDestination {
 pub enum CallRequestResponse {
     Accept,
     Reject,
+    Cancelled,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum CallIncomingResponse {
+    Accept,
+    Reject,
+    Cancelled,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -461,6 +533,9 @@ enum PublishData {
     CallRequest {
         destination: PeerId,
     },
+    CallRequestCancel {
+        destination: PeerId,
+    },
     CallRequestResponse {
         destination: PeerId,
         response: CallRequestResponse,
@@ -469,6 +544,7 @@ enum PublishData {
 
 enum Command {
     Publish(PublishData),
+    OpenStream(PeerId, oneshot::Sender<Result<Stream>>),
 }
 
 #[derive(NetworkBehaviour)]

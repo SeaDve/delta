@@ -1,6 +1,6 @@
 use futures_channel::oneshot;
 use gtk::{
-    glib::{self, clone},
+    glib::{self, clone, closure_local},
     prelude::*,
     subclass::prelude::*,
 };
@@ -16,7 +16,12 @@ pub enum IncomingResponse {
 }
 
 mod imp {
-    use std::cell::{OnceCell, RefCell};
+    use std::{
+        cell::{OnceCell, RefCell},
+        sync::OnceLock,
+    };
+
+    use gst::glib::subclass::Signal;
 
     use super::*;
 
@@ -97,11 +102,16 @@ mod imp {
                     }
                 }));
 
+            self.cancel_button
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    obj.emit_by_name::<()>("outgoing-cancel-requested", &[]);
+                }));
+
             self.end_button
                 .connect_clicked(clone!(@weak obj => move |_| {
                     if let Some(call) = obj.call() {
                         if let Err(err) = call.end() {
-                            tracing::error!("Failed to end call: {}", err);
+                            tracing::error!("Failed to end call: {:?}", err);
                         }
                     } else {
                         tracing::error!("No call to end");
@@ -137,6 +147,12 @@ mod imp {
         fn dispose(&self) {
             self.dispose_template();
         }
+
+        fn signals() -> &'static [glib::subclass::Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+
+            SIGNALS.get_or_init(|| vec![Signal::builder("outgoing-cancel-requested").build()])
+        }
     }
 
     impl WidgetImpl for CallPage {}
@@ -170,6 +186,19 @@ glib::wrapper! {
 impl CallPage {
     pub fn new() -> Self {
         glib::Object::new()
+    }
+
+    pub fn connect_outgoing_cancel_requested<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self) + 'static,
+    {
+        self.connect_closure(
+            "outgoing-cancel-requested",
+            false,
+            closure_local!(|obj: &Self| {
+                f(obj);
+            }),
+        )
     }
 
     /// Note: The stack must be on `incoming_page`` when calling this method.

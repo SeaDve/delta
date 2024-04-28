@@ -119,6 +119,13 @@ mod imp {
                 }
             }));
 
+            self.call_page
+                .connect_outgoing_cancel_requested(clone!(@weak client => move |_| {
+                    glib::spawn_future_local(async move {
+                        client.call_outgoing_cancel().await;
+                    });
+                }));
+
             let placeholder_label = gtk::Label::builder()
                 .margin_top(12)
                 .margin_bottom(12)
