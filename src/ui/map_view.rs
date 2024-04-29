@@ -1,5 +1,5 @@
 use gtk::{
-    glib::{self, clone},
+    glib::{self, clone, closure_local},
     prelude::*,
     subclass::prelude::*,
 };
@@ -8,7 +8,12 @@ use shumate::prelude::*;
 use crate::{peer::Peer, peer_list::PeerList, ui::peer_marker::PeerMarker};
 
 mod imp {
-    use std::cell::{OnceCell, RefCell};
+    use std::{
+        cell::{OnceCell, RefCell},
+        sync::OnceLock,
+    };
+
+    use glib::subclass::Signal;
 
     use super::*;
 
@@ -70,6 +75,16 @@ mod imp {
         fn dispose(&self) {
             self.dispose_template();
         }
+
+        fn signals() -> &'static [glib::subclass::Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+
+            SIGNALS.get_or_init(|| {
+                vec![Signal::builder("called")
+                    .param_types([Peer::static_type()])
+                    .build()]
+            })
+        }
     }
 
     impl WidgetImpl for MapView {}
@@ -83,6 +98,17 @@ glib::wrapper! {
 impl MapView {
     pub fn new() -> Self {
         glib::Object::new()
+    }
+
+    pub fn connect_called<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self, &Peer) + 'static,
+    {
+        self.connect_closure(
+            "called",
+            false,
+            closure_local!(|obj: &Self, peer: &Peer| f(obj, peer)),
+        )
     }
 
     pub fn bind_model(&self, model: &PeerList) {
@@ -99,6 +125,11 @@ impl MapView {
 
                     let marker = PeerMarker::new();
                     marker.set_peer(Some(peer.clone()));
+
+                    marker.connect_called(clone!(@weak obj => move |marker| {
+                        let peer = marker.peer().unwrap();
+                        obj.emit_by_name::<()>("called", &[&peer]);
+                    }));
 
                     imp.marker_layer.get().unwrap().add_marker(&marker);
 

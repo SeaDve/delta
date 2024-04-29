@@ -47,7 +47,7 @@ mod imp {
         sync::OnceLock,
     };
 
-    use gtk::glib::subclass::Signal;
+    use glib::subclass::Signal;
 
     use super::*;
 

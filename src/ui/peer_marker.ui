@@ -3,19 +3,49 @@
   <template class="DeltaPeerMarker" parent="ShumateMarker">
     <property name="child">
       <object class="GtkBox">
-        <property name="spacing">3</property>
-        <property name="orientation">vertical</property>
         <child>
-          <object class="GtkImage">
-            <property name="halign">center</property>
-            <property name="icon-name">driving-symbolic</property>
-            <style>
-              <class name="peer-marker"/>
-            </style>
+          <object class="GtkBox">
+            <property name="spacing">3</property>
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="GtkImage">
+                <property name="halign">center</property>
+                <property name="icon-name">driving-symbolic</property>
+                <style>
+                  <class name="peer-marker"/>
+                </style>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="name_label">
+              </object>
+            </child>
           </object>
         </child>
         <child>
-          <object class="GtkLabel" id="name_label">
+          <object class="GtkPopover" id="popover">
+            <property name="position">top</property>
+            <property name="child">
+              <object class="GtkBox">
+                <property name="spacing">6</property>
+                <child>
+                  <object class="GtkButton" id="call_button">
+                    <property name="icon-name">call-start-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton">
+                    <property name="icon-name">view-more-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </property>
           </object>
         </child>
       </object>

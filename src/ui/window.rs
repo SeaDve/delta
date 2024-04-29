@@ -102,6 +102,16 @@ mod imp {
                 }
             }));
 
+            self.map_view
+                .connect_called(clone!(@weak client => move |_, peer| {
+                    let peer_id = *peer.id();
+                    glib::spawn_future_local(async move {
+                        if let Err(err) = client.call_request(peer_id).await {
+                            tracing::error!("Failed to request call: {:?}", err);
+                        }
+                    });
+                }));
+
             self.call_page
                 .connect_incoming_accepted(clone!(@weak client => move |_| {
                     client.call_incoming_accept();

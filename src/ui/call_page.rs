@@ -16,7 +16,7 @@ mod imp {
         sync::OnceLock,
     };
 
-    use gst::glib::subclass::Signal;
+    use glib::subclass::Signal;
 
     use super::*;
 

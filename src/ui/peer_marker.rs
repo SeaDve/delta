@@ -1,10 +1,15 @@
-use gtk::glib::{self, clone};
+use gtk::glib::{self, clone, closure_local};
 use shumate::{prelude::*, subclass::prelude::*};
 
 use crate::peer::Peer;
 
 mod imp {
-    use std::cell::{OnceCell, RefCell};
+    use std::{
+        cell::{OnceCell, RefCell},
+        sync::OnceLock,
+    };
+
+    use glib::subclass::Signal;
 
     use super::*;
 
@@ -13,6 +18,10 @@ mod imp {
     pub struct PeerMarker {
         #[template_child]
         pub(super) name_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub(super) popover: TemplateChild<gtk::Popover>,
+        #[template_child]
+        pub(super) call_button: TemplateChild<gtk::Button>,
 
         pub(super) peer: RefCell<Option<Peer>>,
         pub(super) peer_signals: OnceCell<glib::SignalGroup>,
@@ -54,12 +63,35 @@ mod imp {
             );
             self.peer_signals.set(peer_signals).unwrap();
 
+            let gesture_click = gtk::GestureClick::new();
+            gesture_click.connect_released(clone!(@weak obj => move |_, _, _, _| {
+                let imp = obj.imp();
+
+                imp.popover.popup();
+            }));
+            obj.add_controller(gesture_click);
+
+            self.call_button
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    let imp = obj.imp();
+
+                    imp.popover.popdown();
+
+                    obj.emit_by_name::<()>("called", &[]);
+                }));
+
             obj.update_label();
             obj.update_location();
         }
 
         fn dispose(&self) {
             self.dispose_template();
+        }
+
+        fn signals() -> &'static [glib::subclass::Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+
+            SIGNALS.get_or_init(|| vec![Signal::builder("called").build()])
         }
     }
 
@@ -78,6 +110,13 @@ impl PeerMarker {
         glib::Object::new()
     }
 
+    pub fn connect_called<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self) + 'static,
+    {
+        self.connect_closure("called", false, closure_local!(|obj: &Self| f(obj)))
+    }
+
     pub fn set_peer(&self, peer: Option<Peer>) {
         let imp = self.imp();
 
@@ -86,6 +125,10 @@ impl PeerMarker {
 
         self.update_label();
         self.update_location();
+    }
+
+    pub fn peer(&self) -> Option<Peer> {
+        self.imp().peer.borrow().clone()
     }
 
     fn update_label(&self) {
