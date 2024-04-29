@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="DeltaMapView" parent="GtkWidget">
+    <property name="layout-manager">
+      <object class="GtkBoxLayout"/>
+    </property>
+    <child>
+      <object class="ShumateMap" id="map">
+        <property name="hexpand">True</property>
+        <property name="vexpand">True</property>
+      </object>
+    </child>
+  </template>
+</interface>

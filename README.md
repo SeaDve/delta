@@ -16,4 +16,4 @@
    - `gstreamer1.0-plugins-good`
 4. Use `run` to build and run the project.
    - `LOCATION=15.162450,120.558289 NAME=Alpha ./run`
-   - `LOCATION=15.162450,120.558299 NAME=Alpha ./run`
+   - `LOCATION=15.525960,120.459808 NAME=Bravo ./run`

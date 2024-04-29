@@ -7,6 +7,15 @@
     padding: 24px;
 }
 
+/* MapView */
+
+.map-marker {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+    border-radius: 9999px;
+    padding: 6px;
+}
+
 /* PeerRow */
 
 .peer-row-prefix {

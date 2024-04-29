@@ -1,6 +1,5 @@
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib::{self, clone};
-use shumate::prelude::*;
 
 use crate::{
     application::Application,
@@ -8,7 +7,7 @@ use crate::{
     client::{Client, MessageDestination},
     config,
     peer::Peer,
-    ui::{call_page::CallPage, peer_row::PeerRow},
+    ui::{call_page::CallPage, map_view::MapView, peer_row::PeerRow},
 };
 
 const LABEL_PEER_KEY: &str = "delta-label-peer";
@@ -26,7 +25,7 @@ mod imp {
         #[template_child]
         pub(super) main_page: TemplateChild<gtk::Box>,
         #[template_child]
-        pub(super) map: TemplateChild<shumate::Map>,
+        pub(super) map_view: TemplateChild<MapView>,
         #[template_child]
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
         #[template_child]
@@ -128,33 +127,10 @@ mod imp {
                     });
                 }));
 
-            {
-                let registry = shumate::MapSourceRegistry::with_defaults();
-                let source = registry.by_id(shumate::MAP_SOURCE_OSM_MAPNIK).unwrap();
-
-                self.map.set_map_source(&source);
-
-                let viewport = self.map.viewport().unwrap();
-                viewport.set_reference_map_source(Some(&source));
-
-                let map_layer = shumate::MapLayer::new(&source, &viewport);
-                self.map.add_layer(&map_layer);
-
-                let marker_layer = shumate::MarkerLayer::new(&viewport);
-                self.map.add_layer(&marker_layer);
-
-                let latitude = 15.162450;
-                let longitude = 120.558289;
-
-                let marker = shumate::Marker::new();
-                let image = gtk::Image::from_icon_name("driving-symbolic");
-                image.add_css_class("peer-row-prefix");
-                marker.set_child(Some(&image));
-                marker.set_location(latitude, longitude);
-                marker_layer.add_marker(&marker);
-
-                self.map.center_on(latitude, longitude);
-            }
+            self.map_view.bind_model(client.peer_list());
+            let location = config::location();
+            self.map_view
+                .set_location(location.latitude, location.longitude);
 
             let placeholder_label = gtk::Label::builder()
                 .margin_top(12)
