@@ -6,6 +6,7 @@ use gtk::{
 
 use crate::{
     call::{Call, CallState},
+    config,
     peer::Peer,
 };
 
@@ -28,6 +29,8 @@ mod imp {
 
         #[template_child]
         pub(super) caller_name_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub(super) caller_distance_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) stack: TemplateChild<gtk::Stack>,
         #[template_child]
@@ -116,6 +119,12 @@ mod imp {
                     obj.update_caller_name_label();
                 }),
             );
+            peer_signals.connect_notify_local(
+                Some("location"),
+                clone!(@weak obj => move |_, _| {
+                    obj.update_caller_distance_label();
+                }),
+            );
             self.peer_signals.set(peer_signals.clone()).unwrap();
 
             self.call_bindings
@@ -124,6 +133,7 @@ mod imp {
 
             obj.update_stack();
             obj.update_caller_name_label();
+            obj.update_caller_distance_label();
             obj.update_duration_label();
         }
 
@@ -162,6 +172,7 @@ mod imp {
 
             obj.update_stack();
             obj.update_caller_name_label();
+            obj.update_caller_distance_label();
             obj.update_duration_label();
 
             obj.notify_call();
@@ -224,6 +235,17 @@ impl CallPage {
 
         let name = self.call().map(|call| call.peer().name());
         imp.caller_name_label.set_label(&name.unwrap_or_default());
+    }
+
+    fn update_caller_distance_label(&self) {
+        let imp = self.imp();
+
+        let distance = self
+            .call()
+            .and_then(|call| call.peer().location())
+            .map(|location| format!("{:.2} m away", config::location().distance(&location)))
+            .unwrap_or_default();
+        imp.caller_distance_label.set_label(&distance);
     }
 
     fn update_stack(&self) {

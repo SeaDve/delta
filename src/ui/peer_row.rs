@@ -1,7 +1,10 @@
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib::{self, clone, closure_local};
 
-use crate::peer::Peer;
+use crate::{
+    config,
+    peer::{Location, Peer},
+};
 
 mod imp {
     use std::{cell::OnceCell, sync::OnceLock};
@@ -50,6 +53,18 @@ mod imp {
 
             let peer = obj.peer();
             peer.bind_property("name", &*obj, "title")
+                .sync_create()
+                .build();
+            peer.bind_property("location", &*obj, "subtitle")
+                .transform_to(|_, location: Option<Location>| {
+                    Some(
+                        location
+                            .map(|location| {
+                                format!("{:.2} m away", config::location().distance(&location))
+                            })
+                            .unwrap_or_default(),
+                    )
+                })
                 .sync_create()
                 .build();
         }

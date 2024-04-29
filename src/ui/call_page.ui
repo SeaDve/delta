@@ -36,8 +36,7 @@
               </object>
             </child>
             <child>
-              <object class="GtkLabel">
-                <property name="label">3 m away</property>
+              <object class="GtkLabel" id="caller_distance_label">
                 <style>
                   <class name="dim-label"/>
                 </style>

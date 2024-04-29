@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <template class="DeltaPeerRow" parent="AdwActionRow">
-    <property name="subtitle">3 m away</property>
     <child type="suffix">
       <object class="GtkButton" id="call_button">
         <property name="valign">center</property>

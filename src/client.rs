@@ -21,7 +21,7 @@ use crate::{
     config,
     input_stream::InputStream,
     output_stream::OutputStream,
-    peer::Peer,
+    peer::{Location, Peer},
     peer_list::PeerList,
 };
 
@@ -357,15 +357,23 @@ impl Client {
                 tracing::debug!("received message from {}", their_peer_id);
 
                 match serde_json::from_slice(&raw_message.data)? {
-                    PublishData::Name { name } => {
-                        if let Some(source_peer_id) = raw_message.source {
-                            if let Some(peer) = self.peer_list().get(&source_peer_id) {
-                                peer.set_name(name);
-                            } else {
-                                tracing::warn!("Received name for unknown peer: {source_peer_id}")
+                    PublishData::PropertyChanged(props) => {
+                        let their_peer_id = raw_message
+                            .source
+                            .context("Received property changed without unknown source")?;
+                        let peer = self
+                            .peer_list()
+                            .get(&their_peer_id)
+                            .context("Received property changed for unknown peer")?;
+                        for prop in props {
+                            match prop {
+                                Property::Name(name) => {
+                                    peer.set_name(name);
+                                }
+                                Property::Location(location) => {
+                                    peer.set_location(Some(location));
+                                }
                             }
-                        } else {
-                            tracing::warn!("Received name without source peer id");
                         }
                     }
                     PublishData::Message {
@@ -514,9 +522,10 @@ impl Client {
             SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
                 ..
             })) => {
-                self.publish(PublishData::Name {
-                    name: config::name(),
-                })
+                self.publish(PublishData::PropertyChanged(vec![
+                    Property::Name(config::name()),
+                    Property::Location(config::location()),
+                ]))
                 .await;
             }
             SwarmEvent::NewListenAddr { address, .. } => {
@@ -546,10 +555,14 @@ enum CallIncomingResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+enum Property {
+    Name(String),
+    Location(Location),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 enum PublishData {
-    Name {
-        name: String,
-    },
+    PropertyChanged(Vec<Property>),
     Message {
         destination: MessageDestination,
         message: String,

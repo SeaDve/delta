@@ -1,5 +1,6 @@
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib::{self, clone};
+use shumate::prelude::*;
 
 use crate::{
     application::Application,
@@ -25,9 +26,11 @@ mod imp {
         #[template_child]
         pub(super) main_page: TemplateChild<gtk::Box>,
         #[template_child]
-        pub(super) call_page: TemplateChild<CallPage>,
+        pub(super) map: TemplateChild<shumate::Map>,
         #[template_child]
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        pub(super) call_page: TemplateChild<CallPage>,
 
         #[template_child]
         pub(super) test_name_label: TemplateChild<gtk::Label>,
@@ -124,6 +127,34 @@ mod imp {
                         }
                     });
                 }));
+
+            {
+                let registry = shumate::MapSourceRegistry::with_defaults();
+                let source = registry.by_id(shumate::MAP_SOURCE_OSM_MAPNIK).unwrap();
+
+                self.map.set_map_source(&source);
+
+                let viewport = self.map.viewport().unwrap();
+                viewport.set_reference_map_source(Some(&source));
+
+                let map_layer = shumate::MapLayer::new(&source, &viewport);
+                self.map.add_layer(&map_layer);
+
+                let marker_layer = shumate::MarkerLayer::new(&viewport);
+                self.map.add_layer(&marker_layer);
+
+                let latitude = 15.162450;
+                let longitude = 120.558289;
+
+                let marker = shumate::Marker::new();
+                let image = gtk::Image::from_icon_name("driving-symbolic");
+                image.add_css_class("peer-row-prefix");
+                marker.set_child(Some(&image));
+                marker.set_location(latitude, longitude);
+                marker_layer.add_marker(&marker);
+
+                self.map.center_on(latitude, longitude);
+            }
 
             let placeholder_label = gtk::Label::builder()
                 .margin_top(12)
