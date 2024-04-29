@@ -160,8 +160,9 @@ mod imp {
             self.call_signals.get().unwrap().set_target(call.as_ref());
             self.call_bindings.set_source(call.as_ref());
 
-            obj.update_caller_name_label();
             obj.update_stack();
+            obj.update_caller_name_label();
+            obj.update_duration_label();
 
             obj.notify_call();
         }
