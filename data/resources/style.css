@@ -10,6 +10,12 @@
 /* MapView */
 
 .map-marker {
+    color: #e01b24;
+}
+
+/* PeerMarker */
+
+.peer-marker {
     background-color: @accent_bg_color;
     color: @accent_fg_color;
     border-radius: 9999px;

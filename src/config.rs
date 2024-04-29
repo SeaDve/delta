@@ -1,6 +1,6 @@
 use std::env;
 
-use crate::peer::Location;
+use crate::location::Location;
 
 pub fn name() -> String {
     env::var("NAME").unwrap_or_else(|_| "Anonymous".to_string())

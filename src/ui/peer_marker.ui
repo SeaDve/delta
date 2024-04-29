@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="DeltaPeerMarker" parent="ShumateMarker">
+    <property name="child">
+      <object class="GtkBox">
+        <property name="spacing">3</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkImage">
+            <property name="halign">center</property>
+            <property name="icon-name">driving-symbolic</property>
+            <style>
+              <class name="peer-marker"/>
+            </style>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="name_label">
+          </object>
+        </child>
+      </object>
+    </property>
+  </template>
+</interface>

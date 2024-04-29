@@ -1,10 +1,7 @@
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib::{self, clone, closure_local};
 
-use crate::{
-    config,
-    peer::{Location, Peer},
-};
+use crate::{config, location::Location, peer::Peer};
 
 mod imp {
     use std::{cell::OnceCell, sync::OnceLock};

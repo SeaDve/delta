@@ -5,6 +5,7 @@ mod call;
 mod client;
 mod config;
 mod input_stream;
+mod location;
 mod output_stream;
 mod peer;
 mod peer_list;

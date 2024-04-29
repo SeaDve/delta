@@ -5,10 +5,7 @@ use gtk::{
 };
 use shumate::prelude::*;
 
-use crate::{
-    peer::{Location, Peer},
-    peer_list::PeerList,
-};
+use crate::{peer::Peer, peer_list::PeerList, ui::peer_marker::PeerMarker};
 
 mod imp {
     use std::cell::{OnceCell, RefCell};
@@ -23,7 +20,7 @@ mod imp {
 
         pub(super) marker_layer: OnceCell<shumate::MarkerLayer>,
         pub(super) our_marker: OnceCell<shumate::Marker>,
-        pub(super) peers: RefCell<Vec<(Peer, shumate::Marker, Vec<glib::Binding>)>>,
+        pub(super) peer_markers: RefCell<Vec<PeerMarker>>,
     }
 
     #[glib::object_subclass]
@@ -60,7 +57,7 @@ mod imp {
             self.map.add_layer(&marker_layer);
             self.marker_layer.set(marker_layer).unwrap();
 
-            let image = gtk::Image::from_icon_name("driving-symbolic");
+            let image = gtk::Image::from_icon_name("map-marker-symbolic");
             image.add_css_class("map-marker");
 
             let marker = shumate::Marker::new();
@@ -93,68 +90,27 @@ impl MapView {
             clone!(@weak self as obj => move |model, position, removed, added| {
                 let imp = obj.imp();
 
-                let new_peers = (0..added).map(|i| {
+                let new_markers = (0..added).map(|i| {
                     let peer = model
                         .item(position + i)
                         .unwrap()
                         .downcast::<Peer>()
                         .unwrap();
 
-                    let hbox = gtk::Box::builder()
-                        .orientation(gtk::Orientation::Vertical)
-                        .spacing(6)
-                        .build();
-
-                    let image = gtk::Image::builder()
-                        .icon_name("driving-symbolic")
-                        .halign(gtk::Align::Center)
-                        .build();
-                    image.add_css_class("map-marker");
-                    hbox.append(&image);
-
-                    let label = gtk::Label::builder().build();
-                    hbox.append(&label);
-
-                    let marker = shumate::Marker::new();
-                    marker.set_child(Some(&hbox));
+                    let marker = PeerMarker::new();
+                    marker.set_peer(Some(peer.clone()));
 
                     imp.marker_layer.get().unwrap().add_marker(&marker);
 
-                    let peer_bindings = vec![
-                        peer.bind_property("name", &label, "label")
-                            .sync_create()
-                            .build(),
-                        peer.bind_property("location", &marker, "latitude")
-                            .transform_to(|_, location: Option<Location>| {
-                                Some(
-                                    location
-                                        .map(|location| location.latitude)
-                                        .unwrap_or_default(),
-                                )
-                            })
-                            .sync_create()
-                            .build(),
-                        peer.bind_property("location", &marker, "longitude")
-                            .transform_to(|_, location: Option<Location>| {
-                                Some(
-                                    location
-                                        .map(|location| location.longitude)
-                                        .unwrap_or_default(),
-                                )
-                            })
-                            .sync_create()
-                            .build(),
-                    ];
-
-                    (peer, marker, peer_bindings)
+                    marker
                 });
                 let removed = imp
-                    .peers
+                    .peer_markers
                     .borrow_mut()
-                    .splice(position as usize..(removed + position) as usize, new_peers)
+                    .splice(position as usize..(removed + position) as usize, new_markers)
                     .collect::<Vec<_>>();
 
-                for (_, marker, _) in removed {
+                for marker in removed {
                     imp.marker_layer.get().unwrap().remove_marker(&marker);
                 }
             }),

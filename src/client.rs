@@ -20,8 +20,9 @@ use crate::{
     call::{Call, CallState},
     config,
     input_stream::InputStream,
+    location::Location,
     output_stream::OutputStream,
-    peer::{Location, Peer},
+    peer::Peer,
     peer_list::PeerList,
 };
 
