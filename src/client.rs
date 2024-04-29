@@ -34,6 +34,12 @@ pub struct MessageReceived {
     pub message: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum MessageDestination {
+    All,
+    Peers(Vec<PeerId>),
+}
+
 mod imp {
     use std::{
         cell::{OnceCell, RefCell},
@@ -526,13 +532,7 @@ impl Client {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum MessageDestination {
-    All,
-    Peers(Vec<PeerId>),
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum CallRequestResponse {
+enum CallRequestResponse {
     Accept,
     Reject,
     Cancelled,
