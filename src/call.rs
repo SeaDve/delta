@@ -99,13 +99,14 @@ mod imp {
                     );
                     self.ongoing_timer_id.replace(Some(source_id));
                 }
-                _ => {
+                CallState::Ended => {
                     self.ongoing_time.set(None);
 
                     if let Some(source_id) = self.ongoing_timer_id.take() {
                         source_id.remove();
                     }
                 }
+                _ => {}
             }
 
             self.state.set(state);

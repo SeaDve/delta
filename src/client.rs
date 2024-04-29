@@ -403,6 +403,20 @@ impl Client {
                     PublishData::CallRequest { ref destination }
                         if destination == swarm.local_peer_id() =>
                     {
+                        if self.active_call().is_some() {
+                            self.publish(PublishData::CallRequestResponse {
+                                destination: their_peer_id,
+                                response: CallRequestResponse::Reject,
+                            })
+                            .await;
+
+                            tracing::debug!(
+                                "Rejected another call since a call is already in progress"
+                            );
+
+                            return Ok(());
+                        }
+
                         let (call_incoming_response_tx, mut call_incoming_response_rx) =
                             oneshot::channel();
                         imp.call_incoming_response_tx
@@ -417,8 +431,6 @@ impl Client {
                         let call = Call::new(&peer);
                         call.set_state(CallState::Incoming);
 
-                        let had_active_call = self.active_call().is_some();
-
                         self.set_active_call(Some(call.clone()));
 
                         let mut stream_control = swarm.behaviour().stream.new_control();
@@ -432,7 +444,7 @@ impl Client {
 
                             tracing::debug!("Received call request: {:?}", response);
 
-                            if response == CallIncomingResponse::Accept && !had_active_call {
+                            if response == CallIncomingResponse::Accept {
                                 tracing::debug!("Opening output stream to {their_peer_id}");
 
                                 let input_stream = match stream_control
@@ -461,7 +473,7 @@ impl Client {
                                 })
                                 .await;
                             } else {
-                                if response != CallIncomingResponse::Cancelled {
+                                if response == CallIncomingResponse::Reject {
                                     obj.publish(PublishData::CallRequestResponse {
                                         destination: their_peer_id,
                                         response: CallRequestResponse::Reject,
@@ -470,7 +482,6 @@ impl Client {
                                 }
 
                                 call.set_state(CallState::Ended);
-                                obj.set_active_call(None);
                             }
                         }));
                     }
