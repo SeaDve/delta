@@ -8,7 +8,7 @@
       <class name="view"/>
     </style>
     <child>
-      <object class="GtkBox">
+      <object class="GtkBox" id="vbox">
         <property name="hexpand">True</property>
         <property name="valign">center</property>
         <property name="orientation">vertical</property>

@@ -28,6 +28,8 @@ mod imp {
         pub(super) call: RefCell<Option<Call>>,
 
         #[template_child]
+        pub(super) vbox: TemplateChild<gtk::Box>, // Unused
+        #[template_child]
         pub(super) caller_name_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) caller_distance_label: TemplateChild<gtk::Label>,
