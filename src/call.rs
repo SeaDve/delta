@@ -150,7 +150,7 @@ impl Call {
         let imp = self.imp();
 
         let pipeline = gst::parse::launch(&format!(
-            "giostreamsrc name={STREAMSRC_ELEMENT_NAME} ! matroskademux ! opusdec ! audioconvert ! autoaudiosink",
+            "giostreamsrc name={STREAMSRC_ELEMENT_NAME} ! matroskademux ! vorbisdec ! audioconvert ! autoaudiosink",
         ))?
         .downcast::<gst::Pipeline>()
         .unwrap();
@@ -182,7 +182,7 @@ impl Call {
         let imp = self.imp();
 
         let pipeline = gst::parse::launch(&format!(
-            "pulsesrc name={PULSESRC_ELEMENT_NAME} ! audioconvert ! opusenc ! matroskamux ! giostreamsink name={STREAMSINK_ELEMENT_NAME}",
+            "pulsesrc name={PULSESRC_ELEMENT_NAME} ! audioconvert ! vorbisenc ! matroskamux ! giostreamsink name={STREAMSINK_ELEMENT_NAME}",
         ))?
         .downcast::<gst::Pipeline>()
         .unwrap();
