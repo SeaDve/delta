@@ -5,7 +5,6 @@
       <object class="GtkBox">
         <child>
           <object class="GtkBox">
-            <property name="spacing">3</property>
             <property name="orientation">vertical</property>
             <child>
               <object class="GtkImage">
@@ -18,6 +17,16 @@
             </child>
             <child>
               <object class="GtkLabel" id="name_label">
+                <style>
+                  <class name="caption-heading"/>
+                </style>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="distance_label">
+                <style>
+                  <class name="caption"/>
+                </style>
               </object>
             </child>
           </object>

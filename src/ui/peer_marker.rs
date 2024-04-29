@@ -1,7 +1,7 @@
 use gtk::glib::{self, clone, closure_local};
 use shumate::{prelude::*, subclass::prelude::*};
 
-use crate::peer::Peer;
+use crate::{config, peer::Peer};
 
 mod imp {
     use std::{
@@ -18,6 +18,8 @@ mod imp {
     pub struct PeerMarker {
         #[template_child]
         pub(super) name_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub(super) distance_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) popover: TemplateChild<gtk::Popover>,
         #[template_child]
@@ -52,13 +54,14 @@ mod imp {
             peer_signals.connect_notify_local(
                 Some("name"),
                 clone!(@weak obj => move |_, _| {
-                    obj.update_label();
+                    obj.update_name_label();
                 }),
             );
             peer_signals.connect_notify_local(
                 Some("location"),
                 clone!(@weak obj => move |_, _| {
                     obj.update_location();
+                    obj.update_distance_label();
                 }),
             );
             self.peer_signals.set(peer_signals).unwrap();
@@ -80,7 +83,8 @@ mod imp {
                     obj.emit_by_name::<()>("called", &[]);
                 }));
 
-            obj.update_label();
+            obj.update_name_label();
+            obj.update_distance_label();
             obj.update_location();
         }
 
@@ -123,7 +127,8 @@ impl PeerMarker {
         imp.peer_signals.get().unwrap().set_target(peer.as_ref());
         imp.peer.replace(peer);
 
-        self.update_label();
+        self.update_name_label();
+        self.update_distance_label();
         self.update_location();
     }
 
@@ -131,7 +136,7 @@ impl PeerMarker {
         self.imp().peer.borrow().clone()
     }
 
-    fn update_label(&self) {
+    fn update_name_label(&self) {
         let imp = self.imp();
 
         let name = imp
@@ -141,6 +146,19 @@ impl PeerMarker {
             .map(|peer| peer.name())
             .unwrap_or_default();
         imp.name_label.set_text(&name);
+    }
+
+    fn update_distance_label(&self) {
+        let imp = self.imp();
+
+        let distance = imp
+            .peer
+            .borrow()
+            .as_ref()
+            .and_then(|peer| peer.location())
+            .map(|location| format!("{:.2} m", config::location().distance(&location)))
+            .unwrap_or_default();
+        imp.distance_label.set_text(&distance);
     }
 
     fn update_location(&self) {
