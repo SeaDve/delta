@@ -226,14 +226,18 @@ impl Call {
             gst::MessageView::Eos(..) => {
                 tracing::debug!("Received EOS event on input bus");
 
-                self.dispose_input();
+                glib::spawn_future_local(clone!(@weak self as obj => async move {
+                    obj.dispose_input().await;
+                }));
 
                 glib::ControlFlow::Break
             }
             gst::MessageView::Error(err) => {
                 tracing::warn!("Error from input bus: {:?}", err);
 
-                self.dispose_input();
+                glib::spawn_future_local(clone!(@weak self as obj => async move {
+                    obj.dispose_input().await;
+                }));
 
                 glib::ControlFlow::Break
             }
@@ -246,14 +250,18 @@ impl Call {
             gst::MessageView::Eos(..) => {
                 tracing::debug!("Received EOS event on output bus");
 
-                self.dispose_output();
+                glib::spawn_future_local(clone!(@weak self as obj => async move {
+                    obj.dispose_output().await;
+                }));
 
                 glib::ControlFlow::Break
             }
             gst::MessageView::Error(err) => {
                 tracing::warn!("Error from output bus: {:?}", err);
 
-                self.dispose_output();
+                glib::spawn_future_local(clone!(@weak self as obj => async move {
+                    obj.dispose_output().await;
+                }));
 
                 glib::ControlFlow::Break
             }
@@ -261,52 +269,40 @@ impl Call {
         }
     }
 
-    fn dispose_input(&self) {
+    async fn dispose_input(&self) {
         let imp = self.imp();
 
-        let (input_stream, pipeline, bus_watch_guard) = imp.input.take().unwrap();
+        let (input_stream, pipeline, _bus_watch_guard) = imp.input.take().unwrap();
 
-        glib::spawn_future_local(clone!(@weak self as obj => async move {
-            let imp = obj.imp();
+        if let Err(err) = input_stream.close_future(glib::Priority::LOW).await {
+            tracing::error!("Failed to close input stream: {:?}", err);
+        }
 
-            let _bus_watch_guard = bus_watch_guard;
+        pipeline.set_state(gst::State::Null).unwrap();
 
-            if let Err(err) = input_stream.close_future(glib::Priority::LOW).await {
-                tracing::error!("Failed to close input stream: {:?}", err);
-            }
+        imp.input_closed.set(true);
 
-            pipeline.set_state(gst::State::Null).unwrap();
-
-            imp.input_closed.set(true);
-
-            if imp.output_closed.get() {
-                obj.set_state(CallState::Ended);
-            }
-        }));
+        if imp.output_closed.get() {
+            self.set_state(CallState::Ended);
+        }
     }
 
-    fn dispose_output(&self) {
+    async fn dispose_output(&self) {
         let imp = self.imp();
 
-        let (output_stream, pipeline, bus_watch_guard) = imp.output.take().unwrap();
+        let (output_stream, pipeline, _bus_watch_guard) = imp.output.take().unwrap();
 
-        glib::spawn_future_local(clone!(@weak self as obj => async move {
-            let imp = obj.imp();
+        if let Err(err) = output_stream.close_future(glib::Priority::LOW).await {
+            tracing::error!("Failed to close output stream: {:?}", err);
+        }
 
-            let _bus_watch_guard = bus_watch_guard;
+        pipeline.set_state(gst::State::Null).unwrap();
 
-            if let Err(err) = output_stream.close_future(glib::Priority::LOW).await {
-                tracing::error!("Failed to close output stream: {:?}", err);
-            }
+        imp.output_closed.set(true);
 
-            pipeline.set_state(gst::State::Null).unwrap();
-
-            imp.output_closed.set(true);
-
-            if imp.input_closed.get() {
-                obj.set_state(CallState::Ended);
-            }
-        }));
+        if imp.input_closed.get() {
+            self.set_state(CallState::Ended);
+        }
     }
 }
 
