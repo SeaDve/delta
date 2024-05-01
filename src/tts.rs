@@ -10,7 +10,7 @@ thread_local! {
 fn instance() -> Result<Connection> {
     TTS.with(|tts| {
         tts.get_or_try_init(|| {
-            let conn = Connection::open("tts", "tts", "tts", Mode::Threaded)?;
+            let conn = Connection::open("delta", "delta", "delta", Mode::Threaded)?;
 
             tracing::debug!("Speech dispatcher connection initialized");
 
