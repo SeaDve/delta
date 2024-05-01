@@ -25,7 +25,7 @@ pub fn speak(text: impl Into<String>) {
 
     glib::spawn_future_local(async move {
         gio::spawn_blocking(move || {
-            if let Err(err) = stop() {
+            if let Err(err) = cancel() {
                 tracing::warn!("Failed to stop: {:?}", err);
             }
 
@@ -48,10 +48,10 @@ fn say(text: impl Into<String>, priority: Priority) -> Result<()> {
     Ok(())
 }
 
-fn stop() -> Result<()> {
+fn cancel() -> Result<()> {
     let instance = instance()?;
 
-    instance.stop()?;
+    instance.cancel()?;
 
     Ok(())
 }
