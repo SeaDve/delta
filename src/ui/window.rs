@@ -83,7 +83,6 @@ mod imp {
                     if active_call.state() == CallState::Incoming {
                         tts::speak(
                             format!("Incoming call from {}", active_call.peer().name()),
-                            true,
                         );
                     }
 
