@@ -14,7 +14,14 @@
    - `libshumate-dev`
    - `libgstreamer1.0-dev`
    - `gstreamer1.0-plugins-good`
+   - `libspeechd-dev`
+   - `speech-dispatcher`
 4. Use `./run` to build and run the project.
    - `LOCATION=15.162450,120.558289 NAME=ABC-123 ./run`
    - `LOCATION=15.525960,120.459808 NAME=IJK-456 ./run`
    - `LOCATION=13.111430,123.363503 NAME=XYZ-789 ./run`
+
+## Set Up TTS
+
+1. Uncomment the required locale from `/etc/locale.gen`.
+2. Install `locales` via `apt` and run `locale-gen`.

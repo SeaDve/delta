@@ -9,6 +9,7 @@ mod location;
 mod output_stream;
 mod peer;
 mod peer_list;
+mod tts;
 mod ui;
 
 use std::path::Path;

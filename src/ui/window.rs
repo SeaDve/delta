@@ -7,6 +7,7 @@ use crate::{
     client::{Client, MessageDestination},
     config,
     peer::Peer,
+    tts,
     ui::{call_page::CallPage, map_view::MapView, peer_row::PeerRow},
 };
 
@@ -78,6 +79,13 @@ mod imp {
                         active_call.state(),
                         CallState::Incoming | CallState::Outgoing
                     ));
+
+                    if active_call.state() == CallState::Incoming {
+                        tts::speak(
+                            format!("Incoming call from {}", active_call.peer().name()),
+                            true,
+                        );
+                    }
 
                     imp.call_page.set_call(Some(active_call.clone()));
                     imp.main_stack.set_visible_child(&*imp.call_page);
