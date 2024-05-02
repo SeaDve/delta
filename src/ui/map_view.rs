@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use gtk::{
     glib::{self, clone, closure_local},
     prelude::*,
@@ -6,6 +8,9 @@ use gtk::{
 use shumate::prelude::*;
 
 use crate::{peer::Peer, peer_list::PeerList, ui::peer_marker::PeerMarker};
+
+const DEFAULT_ZOOM_LEVEL: f64 = 16.0;
+const DEFAULT_GO_TO_DURATION: Duration = Duration::from_millis(500);
 
 mod imp {
     use std::{
@@ -165,7 +170,11 @@ impl MapView {
     pub fn go_to(&self, latitude: f64, longitude: f64) {
         let imp = self.imp();
 
-        imp.map
-            .go_to_full_with_duration(latitude, longitude, 16.0, 500);
+        imp.map.go_to_full_with_duration(
+            latitude,
+            longitude,
+            DEFAULT_ZOOM_LEVEL,
+            DEFAULT_GO_TO_DURATION.as_millis() as u32,
+        );
     }
 }
