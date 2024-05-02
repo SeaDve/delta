@@ -2,12 +2,24 @@
 <interface>
   <template class="DeltaMapView" parent="GtkWidget">
     <property name="layout-manager">
-      <object class="GtkBoxLayout"/>
+      <object class="GtkBinLayout"/>
     </property>
     <child>
-      <object class="ShumateMap" id="map">
-        <property name="hexpand">True</property>
-        <property name="vexpand">True</property>
+      <object class="GtkOverlay">
+        <child>
+          <object class="ShumateMap" id="map">
+            <property name="hexpand">True</property>
+            <property name="vexpand">True</property>
+          </object>
+        </child>
+        <child type="overlay">
+          <object class="ShumateCompass" id="compass">
+            <property name="margin-top">12</property>
+            <property name="margin-end">12</property>
+            <property name="halign">end</property>
+            <property name="valign">start</property>
+          </object>
+        </child>
       </object>
     </child>
   </template>

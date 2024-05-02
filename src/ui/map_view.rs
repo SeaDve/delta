@@ -22,6 +22,8 @@ mod imp {
     pub struct MapView {
         #[template_child]
         pub(super) map: TemplateChild<shumate::Map>,
+        #[template_child]
+        pub(super) compass: TemplateChild<shumate::Compass>,
 
         pub(super) marker_layer: OnceCell<shumate::MarkerLayer>,
         pub(super) our_marker: OnceCell<shumate::Marker>,
@@ -54,6 +56,8 @@ mod imp {
 
             let viewport = self.map.viewport().unwrap();
             viewport.set_reference_map_source(Some(&source));
+
+            self.compass.set_viewport(Some(&viewport));
 
             let map_layer = shumate::MapLayer::new(&source, &viewport);
             self.map.add_layer(&map_layer);
