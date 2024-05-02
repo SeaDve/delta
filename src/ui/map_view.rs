@@ -29,6 +29,8 @@ mod imp {
         pub(super) map: TemplateChild<shumate::Map>,
         #[template_child]
         pub(super) compass: TemplateChild<shumate::Compass>,
+        #[template_child]
+        pub(super) return_button: TemplateChild<gtk::Button>,
 
         pub(super) marker_layer: OnceCell<shumate::MarkerLayer>,
         pub(super) our_marker: OnceCell<shumate::Marker>,
@@ -79,6 +81,16 @@ mod imp {
             self.marker_layer.get().unwrap().add_marker(&marker);
 
             self.our_marker.set(marker).unwrap();
+
+            let obj = self.obj();
+
+            self.return_button
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    let imp = obj.imp();
+
+                    let our_marker = imp.our_marker.get().unwrap();
+                    obj.go_to(our_marker.latitude(), our_marker.longitude());
+                }));
         }
 
         fn dispose(&self) {

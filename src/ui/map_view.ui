@@ -20,6 +20,19 @@
             <property name="valign">start</property>
           </object>
         </child>
+        <child type="overlay">
+          <object class="GtkButton" id="return_button">
+            <property name="margin-bottom">12</property>
+            <property name="margin-end">12</property>
+            <property name="halign">end</property>
+            <property name="valign">end</property>
+            <property name="icon-name">map-marker-symbolic</property>
+            <style>
+              <class name="circular"/>
+              <class name="osd"/>
+            </style>
+          </object>
+        </child>
       </object>
     </child>
   </template>
