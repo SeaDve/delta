@@ -10,7 +10,7 @@ use shumate::prelude::*;
 use crate::{peer::Peer, peer_list::PeerList, ui::peer_marker::PeerMarker};
 
 const DEFAULT_ZOOM_LEVEL: f64 = 16.0;
-const DEFAULT_GO_TO_DURATION: Duration = Duration::from_millis(500);
+const DEFAULT_GO_TO_DURATION: Duration = Duration::from_secs(1);
 
 mod imp {
     use std::{
