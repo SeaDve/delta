@@ -40,4 +40,5 @@
 
 .view-switcher > button {
     border-radius: 0;
+    margin-top: 0; /* removes separator given by `linked` */
 }
