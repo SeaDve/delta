@@ -96,7 +96,14 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for MapView {}
+    impl WidgetImpl for MapView {
+        fn map(&self) {
+            self.parent_map();
+
+            let viewport = self.map.viewport().unwrap();
+            viewport.set_zoom_level(DEFAULT_ZOOM_LEVEL);
+        }
+    }
 }
 
 glib::wrapper! {
