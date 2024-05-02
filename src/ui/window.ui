@@ -16,7 +16,6 @@
                     <property name="orientation">vertical</property>
                     <style>
                       <class name="view-switcher"/>
-                      <class name="card"/>
                     </style>
                   </object>
                 </property>
