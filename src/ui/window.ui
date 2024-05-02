@@ -20,6 +20,7 @@
             </child>
             <child>
               <object class="GtkStack" id="main_page_stack">
+                <property name="transition-type">slide-up-down</property>
                 <property name="vexpand">True</property>
                 <property name="hexpand">True</property>
                 <child>

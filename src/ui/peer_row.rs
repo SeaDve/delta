@@ -19,6 +19,8 @@ mod imp {
 
         #[template_child]
         pub(super) call_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(super) view_on_map_button: TemplateChild<gtk::Button>,
     }
 
     #[glib::object_subclass]
@@ -47,6 +49,10 @@ mod imp {
                 .connect_clicked(clone!(@weak obj => move |_| {
                     obj.emit_by_name::<()>("called", &[]);
                 }));
+            self.view_on_map_button
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    obj.emit_by_name::<()>("viewed-on-map", &[]);
+                }));
 
             let peer = obj.peer();
             peer.bind_property("name", &*obj, "title")
@@ -69,7 +75,12 @@ mod imp {
         fn signals() -> &'static [glib::subclass::Signal] {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
 
-            SIGNALS.get_or_init(|| vec![Signal::builder("called").build()])
+            SIGNALS.get_or_init(|| {
+                vec![
+                    Signal::builder("called").build(),
+                    Signal::builder("viewed-on-map").build(),
+                ]
+            })
         }
     }
 
@@ -93,12 +104,13 @@ impl PeerRow {
     where
         F: Fn(&Self) + 'static,
     {
-        self.connect_closure(
-            "called",
-            false,
-            closure_local!(|obj: &Self| {
-                f(obj);
-            }),
-        )
+        self.connect_closure("called", false, closure_local!(|obj: &Self| f(obj)))
+    }
+
+    pub fn connect_viewed_on_map<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self) + 'static,
+    {
+        self.connect_closure("viewed-on-map", false, closure_local!(|obj: &Self| f(obj)))
     }
 }

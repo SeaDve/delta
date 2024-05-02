@@ -20,6 +20,15 @@
       </object>
     </child>
     <child type="suffix">
+      <object class="GtkButton" id="view_on_map_button">
+        <property name="valign">center</property>
+        <property name="icon-name">map-marker-symbolic</property>
+        <style>
+          <class name="flat"/>
+        </style>
+      </object>
+    </child>
+    <child type="suffix">
       <object class="GtkButton">
         <property name="valign">center</property>
         <property name="icon-name">view-more-symbolic</property>

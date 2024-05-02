@@ -28,6 +28,8 @@ mod imp {
         #[template_child]
         pub(super) map_view: TemplateChild<MapView>,
         #[template_child]
+        pub(super) main_page_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub(super) call_page: TemplateChild<CallPage>,
@@ -160,7 +162,7 @@ mod imp {
 
             self.peer_list_box.bind_model(
                 Some(client.peer_list()),
-                clone!(@weak client => @default-panic, move |peer| {
+                clone!(@weak obj, @weak client => @default-panic, move |peer| {
                     let peer = peer.downcast_ref::<Peer>().unwrap();
 
                     let row = PeerRow::new(peer);
@@ -171,6 +173,14 @@ mod imp {
                                 tracing::error!("Failed to request call: {:?}", err);
                             }
                         });
+                    }));
+                    row.connect_viewed_on_map(clone!(@weak obj => move |row| {
+                        let imp = obj.imp();
+
+                        let location = row.peer().location().unwrap();
+                        imp.map_view.go_to(location.latitude, location.longitude);
+
+                        imp.main_page_stack.set_visible_child(&*imp.map_view);
                     }));
 
                     row.upcast()

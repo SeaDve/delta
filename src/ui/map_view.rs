@@ -161,4 +161,11 @@ impl MapView {
             .set_location(latitude, longitude);
         imp.map.center_on(latitude, longitude);
     }
+
+    pub fn go_to(&self, latitude: f64, longitude: f64) {
+        let imp = self.imp();
+
+        imp.map
+            .go_to_full_with_duration(latitude, longitude, 16.0, 500);
+    }
 }
