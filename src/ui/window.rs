@@ -26,9 +26,9 @@ mod imp {
         #[template_child]
         pub(super) main_page: TemplateChild<gtk::Box>,
         #[template_child]
-        pub(super) map_view: TemplateChild<MapView>,
+        pub(super) view_stack: TemplateChild<gtk::Stack>,
         #[template_child]
-        pub(super) main_page_stack: TemplateChild<gtk::Stack>,
+        pub(super) map_view: TemplateChild<MapView>,
         #[template_child]
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
         #[template_child]
@@ -180,7 +180,7 @@ mod imp {
                         let location = row.peer().location().unwrap();
                         imp.map_view.go_to(location.latitude, location.longitude);
 
-                        imp.main_page_stack.set_visible_child(&*imp.map_view);
+                        imp.view_stack.set_visible_child(&*imp.map_view);
                     }));
 
                     row.upcast()

@@ -12,14 +12,18 @@
               <object class="GtkWindowHandle">
                 <property name="child">
                   <object class="GtkStackSwitcher">
-                    <property name="stack">main_page_stack</property>
+                    <property name="stack">view_stack</property>
                     <property name="orientation">vertical</property>
+                    <style>
+                      <class name="view-switcher"/>
+                      <class name="card"/>
+                    </style>
                   </object>
                 </property>
               </object>
             </child>
             <child>
-              <object class="GtkStack" id="main_page_stack">
+              <object class="GtkStack" id="view_stack">
                 <property name="transition-type">slide-up-down</property>
                 <property name="vexpand">True</property>
                 <property name="hexpand">True</property>

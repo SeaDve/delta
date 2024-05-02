@@ -30,3 +30,13 @@
     border-radius: 9999px;
     padding: 6px;
 }
+
+/* Window */
+
+.view-switcher  {
+    border-radius: 0;
+}
+
+.view-switcher > button {
+    border-radius: 0;
+}
