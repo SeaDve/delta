@@ -111,6 +111,9 @@
         <child>
           <object class="DeltaCallPage" id="call_page"/>
         </child>
+        <child>
+          <object class="DeltaListeningPage" id="listening_page"/>
+        </child>
       </object>
     </property>
   </template>

@@ -72,7 +72,7 @@ mod imp {
                 .build();
         }
 
-        fn signals() -> &'static [glib::subclass::Signal] {
+        fn signals() -> &'static [Signal] {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
 
             SIGNALS.get_or_init(|| {

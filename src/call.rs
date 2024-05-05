@@ -1,6 +1,6 @@
 use std::{cell::OnceCell, time::Duration};
 
-use anyhow::{anyhow, ensure, Context, Result};
+use anyhow::{ensure, Context, Result};
 use gst::prelude::*;
 use gtk::{
     glib::{self, clone},
@@ -8,7 +8,7 @@ use gtk::{
     subclass::prelude::*,
 };
 
-use crate::{input_stream::InputStream, output_stream::OutputStream, peer::Peer};
+use crate::{audio_device, input_stream::InputStream, output_stream::OutputStream, peer::Peer};
 
 const STREAMSRC_ELEMENT_NAME: &str = "giostreamsrc";
 
@@ -189,7 +189,7 @@ impl Call {
         .unwrap();
 
         let pulsesrc = pipeline.by_name(PULSESRC_ELEMENT_NAME).unwrap();
-        let device = find_default_source_device()?;
+        let device = audio_device::find_default_source()?;
         device.reconfigure_element(&pulsesrc)?;
 
         let device_name = pulsesrc
@@ -304,56 +304,4 @@ impl Call {
             self.set_state(CallState::Ended);
         }
     }
-}
-
-fn find_default_source_device() -> Result<gst::Device> {
-    let provider = gst::DeviceProviderFactory::by_name("pulsedeviceprovider")
-        .context("Missing pulseaudio device provider")?;
-
-    provider.start()?;
-    let devices = provider.devices();
-    provider.stop();
-
-    for device in devices {
-        if !device.has_classes("Audio/Source") {
-            tracing::debug!(
-                "Skipping device `{}` as it has unknown device class `{}`",
-                device.name(),
-                device.device_class()
-            );
-            continue;
-        }
-
-        let Some(properties) = device.properties() else {
-            tracing::warn!(
-                "Skipping device `{}` as it has no properties",
-                device.name()
-            );
-            continue;
-        };
-
-        let is_default = match properties.get::<bool>("is-default") {
-            Ok(is_default) => is_default,
-            Err(err) => {
-                tracing::warn!(
-                    "Skipping device `{}` as it has no `is-default` property: {:?}",
-                    device.name(),
-                    err
-                );
-                continue;
-            }
-        };
-
-        if !is_default {
-            tracing::debug!(
-                "Skipping device `{}` as it is not the default",
-                device.name()
-            );
-            continue;
-        }
-
-        return Ok(device);
-    }
-
-    Err(anyhow!("Failed to find a default device"))
 }

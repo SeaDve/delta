@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="DeltaListeningPage" parent="GtkWidget">
+    <property name="layout-manager">
+      <object class="GtkBinLayout"/>
+    </property>
+    <style>
+      <class name="view"/>
+    </style>
+    <child>
+      <object class="AdwStatusPage">
+        <property name="title">Listening…</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="spacing">24</property>
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="GtkLabel" id="command_label">
+                <property name="wrap">True</property>
+                <style>
+                  <class name="caption"/>
+                  <class name="dim-label"/>
+                </style>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="cancel_button">
+                <property name="halign">center</property>
+                <property name="label">Cancel</property>
+                <style>
+                  <class name="pill"/>
+                  <class name="destructive-action"/>
+                </style>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </child>
+  </template>
+</interface>

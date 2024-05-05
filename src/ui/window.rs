@@ -7,14 +7,17 @@ use crate::{
     client::{Client, MessageDestination},
     config,
     peer::Peer,
+    stt::Stt,
     tts,
-    ui::{call_page::CallPage, map_view::MapView, peer_row::PeerRow},
+    ui::{
+        call_page::CallPage, listening_page::ListeningPage, map_view::MapView, peer_row::PeerRow,
+    },
 };
 
 const LABEL_PEER_KEY: &str = "delta-label-peer";
 
 mod imp {
-    use std::cell::OnceCell;
+    use std::cell::{Cell, OnceCell, RefCell};
 
     use super::*;
 
@@ -33,6 +36,8 @@ mod imp {
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub(super) call_page: TemplateChild<CallPage>,
+        #[template_child]
+        pub(super) listening_page: TemplateChild<ListeningPage>,
 
         #[template_child]
         pub(super) test_name_label: TemplateChild<gtk::Label>,
@@ -46,6 +51,10 @@ mod imp {
         pub(super) test_unselect_all_button: TemplateChild<gtk::Button>,
 
         pub(super) client: OnceCell<Client>,
+
+        pub(super) stt: Stt,
+        pub(super) stt_segments: RefCell<String>,
+        pub(super) stt_is_accepting_segments: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -146,6 +155,11 @@ mod imp {
                     });
                 }));
 
+            self.listening_page
+                .connect_cancelled(clone!(@weak obj => move |_|{
+                    obj.reset_stt_segments();
+                }));
+
             self.map_view.bind_model(client.peer_list());
             let location = config::location();
             self.map_view
@@ -186,6 +200,11 @@ mod imp {
                     row.upcast()
                 }),
             );
+
+            self.stt
+                .connect_transcripted(clone!(@weak obj => move |_, message| {
+                    obj.handle_stt_segment(message);
+                }));
 
             self.client.set(client.clone()).unwrap();
 
@@ -303,5 +322,56 @@ impl Window {
         glib::Object::builder()
             .property("application", application)
             .build()
+    }
+
+    fn reset_stt_segments(&self) {
+        let imp = self.imp();
+
+        imp.stt_segments.borrow_mut().clear();
+        imp.stt_is_accepting_segments.set(false);
+
+        imp.listening_page.set_command("");
+        imp.main_stack.set_visible_child(&*imp.main_page);
+    }
+
+    fn handle_stt_segment(&self, segment: &str) {
+        let imp = self.imp();
+
+        let segment = segment.trim().to_lowercase();
+        let words = segment
+            .split_whitespace()
+            .map(|s| s.trim_matches(|c: char| c.is_ascii_punctuation()))
+            .collect::<Vec<_>>();
+
+        let is_random_noise = segment.trim().starts_with(|c: char| c == '[' || c == '(');
+        if is_random_noise && !imp.stt_segments.borrow().is_empty() {
+            self.handle_voice_command(imp.stt_segments.borrow().as_str());
+            self.reset_stt_segments();
+        }
+
+        if imp.stt_is_accepting_segments.get() {
+            imp.stt_segments.borrow_mut().push(' ');
+            imp.stt_segments
+                .borrow_mut()
+                .push_str(words.join(" ").as_str());
+
+            imp.listening_page
+                .set_command(imp.stt_segments.borrow().as_str());
+        }
+
+        if let Some(position) = words.iter().position(|w| *w == "delta") {
+            imp.stt_segments
+                .borrow_mut()
+                .push_str(words[(position + 1)..].join(" ").as_str());
+            imp.stt_is_accepting_segments.set(true);
+
+            imp.main_stack.set_visible_child(&*imp.listening_page);
+        }
+    }
+
+    fn handle_voice_command(&self, command: &str) {
+        // TODO: Implement voice commands
+
+        tracing::debug!("Voice command: {}", command);
     }
 }

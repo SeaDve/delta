@@ -16,12 +16,18 @@
    - `gstreamer1.0-plugins-good`
    - `libspeechd-dev`
    - `speech-dispatcher`
-4. Use `./run` to build and run the project.
+4. Set up text-to-speech (TTS).
+   1. Uncomment the required locale from `/etc/locale.gen`.
+   2. Install `locales` via `apt` and run `locale-gen`.
+5. Set up speech-to-text (STT).
+
+```bash
+git clone https://github.com/ggerganov/whisper.cpp.git
+cd whisper.cpp
+./models/download-ggml-model.sh tiny.en
+```
+
+6. Use `./run` to build and run the project.
    - `LOCATION=15.162450,120.558289 NAME=ABC-123 ./run`
    - `LOCATION=15.525960,120.459808 NAME=IJK-456 ./run`
    - `LOCATION=13.111430,123.363503 NAME=XYZ-789 ./run`
-
-## Set Up TTS
-
-1. Uncomment the required locale from `/etc/locale.gen`.
-2. Install `locales` via `apt` and run `locale-gen`.

@@ -1,6 +1,7 @@
 #![allow(clippy::new_without_default)]
 
 mod application;
+mod audio_device;
 mod call;
 mod client;
 mod config;
@@ -9,6 +10,7 @@ mod location;
 mod output_stream;
 mod peer;
 mod peer_list;
+mod stt;
 mod tts;
 mod ui;
 
