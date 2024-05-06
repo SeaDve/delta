@@ -146,29 +146,11 @@ impl Stt {
 
         let bus = pipeline.bus().unwrap();
         let bus_watch_guard = bus
-            .add_watch_local(clone!(@weak pipeline => @default-panic, move |_, msg| {
-                use gst::MessageView;
-
-                match msg.view() {
-                    MessageView::Eos(..) => {
-                        pipeline.set_state(gst::State::Null).unwrap();
-
-                        glib::ControlFlow::Break
-                    },
-                    MessageView::Error(err) => {
-                        pipeline.set_state(gst::State::Null).unwrap();
-
-                        println!(
-                            "Error from {:?}: {} ({:?})",
-                            err.src().map(|s| s.path_string()),
-                            err.error(),
-                            err.debug()
-                        );
-                        glib::ControlFlow::Break
-                    }
-                    _ => glib::ControlFlow::Continue,
-                }
-            }))
+            .add_watch_local(
+                clone!(@weak self as obj => @default-panic, move |_, message| {
+                    obj.handle_bus_message(message)
+                }),
+            )
             .unwrap();
 
         imp.pipeline
@@ -193,6 +175,38 @@ impl Stt {
         pipeline.set_state(gst::State::Playing)?;
 
         Ok(())
+    }
+
+    fn handle_bus_message(&self, message: &gst::Message) -> glib::ControlFlow {
+        let imp = self.imp();
+
+        match message.view() {
+            gst::MessageView::Eos(..) => {
+                tracing::debug!("Received EOS event on bus");
+
+                let pipeline = imp.pipeline.borrow();
+                let (pipeline, _) = pipeline.as_ref().unwrap();
+
+                if let Err(err) = pipeline.set_state(gst::State::Null) {
+                    tracing::warn!("Failed to set pipeline state to NULL: {:?}", err);
+                }
+
+                glib::ControlFlow::Break
+            }
+            gst::MessageView::Error(err) => {
+                tracing::warn!("Error from message bus: {:?}", err);
+
+                let pipeline = imp.pipeline.borrow();
+                let (pipeline, _) = pipeline.as_ref().unwrap();
+
+                if let Err(err) = pipeline.set_state(gst::State::Null) {
+                    tracing::warn!("Failed to set pipeline state to NULL: {:?}", err);
+                }
+
+                glib::ControlFlow::Break
+            }
+            _ => glib::ControlFlow::Continue,
+        }
     }
 }
 
