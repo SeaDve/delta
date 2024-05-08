@@ -11,12 +11,12 @@
 3. Install the required dependencies.
 
 ```sh
-sudo apt install libgtk-4-dev libadwaita-1-dev libshumate-dev libgstreamer1.0-dev gstreamer1.0-plugins-good libspeechd-dev speech-dispatcher
+sudo apt install libgtk-4-dev libadwaita-1-dev libshumate-dev libgstreamer1.0-dev gstreamer1.0-plugins-good libspeechd-dev speech-dispatcher cmake
 ```
 
 4. Set up text-to-speech (TTS).
    1. Uncomment the required locale from `/etc/locale.gen`.
-   2. Install `locales` via `apt` and run `locale-gen`.
+   2. Install `locales` via `apt` and run `/usr/sbin/locale-gen`.
 5. Set up speech-to-text (STT).
 
 ```sh
