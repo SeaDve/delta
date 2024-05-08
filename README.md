@@ -8,20 +8,18 @@
    - Run, `toolbox create --image quay.io/toolbx-images/debian-toolbox:12`
 2. Set up Rust via `rustup`.
    - Optionally, install `rust-analyzer` via `rustup component add rust-analyzer`.
-3. Install the following system dependencies via `apt`:
-   - `libgtk-4-dev`
-   - `libadwaita-1-dev`
-   - `libshumate-dev`
-   - `libgstreamer1.0-dev`
-   - `gstreamer1.0-plugins-good`
-   - `libspeechd-dev`
-   - `speech-dispatcher`
+3. Install the required dependencies.
+
+```sh
+sudo apt install libgtk-4-dev libadwaita-1-dev libshumate-dev libgstreamer1.0-dev gstreamer1.0-plugins-good libspeechd-dev speech-dispatcher
+```
+
 4. Set up text-to-speech (TTS).
    1. Uncomment the required locale from `/etc/locale.gen`.
    2. Install `locales` via `apt` and run `locale-gen`.
 5. Set up speech-to-text (STT).
 
-```bash
+```sh
 git clone https://github.com/ggerganov/whisper.cpp.git
 cd whisper.cpp
 ./models/download-ggml-model.sh tiny.en
