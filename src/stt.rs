@@ -7,7 +7,7 @@ use gtk::{
     subclass::prelude::*,
 };
 
-use crate::audio_device;
+use crate::{audio_device, config};
 
 const SAMPLE_WINDOW_SIZE: usize = 2 * 32_000; // 2 seconds
 const MODEL_PATH: &str = "./ggml-tiny.en.bin";
@@ -39,8 +39,10 @@ mod imp {
 
             let obj = self.obj();
 
-            if let Err(err) = obj.init() {
-                tracing::error!("Failed to initialize STT: {:?}", err);
+            if config::is_tts_enabled() {
+                if let Err(err) = obj.init() {
+                    tracing::error!("Failed to initialize STT: {:?}", err);
+                }
             }
         }
 
