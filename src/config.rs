@@ -6,17 +6,17 @@ pub fn is_tts_enabled() -> bool {
     env::var("TTS").is_ok_and(|s| s == "1")
 }
 
+pub fn is_gps_enabled() -> bool {
+    env::var("GPS").is_ok_and(|s| s == "1")
+}
+
 pub fn name() -> String {
     env::var("NAME").unwrap_or_else(|_| "Anonymous".to_string())
 }
 
-pub fn location() -> Location {
-    env::var("LOCATION").map_or_else(
-        |_| Location {
-            latitude: 0.0,
-            longitude: 0.0,
-        },
-        |str| {
+pub fn location() -> Option<Location> {
+    env::var("LOCATION")
+        .map(|str| {
             let mut parts = str.split(',');
             let latitude = parts
                 .next()
@@ -30,6 +30,6 @@ pub fn location() -> Location {
                 latitude,
                 longitude,
             }
-        },
-    )
+        })
+        .ok()
 }

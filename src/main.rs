@@ -5,6 +5,7 @@ mod audio_device;
 mod call;
 mod client;
 mod config;
+mod gps;
 mod input_stream;
 mod location;
 mod output_stream;

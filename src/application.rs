@@ -1,13 +1,16 @@
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::{gio, glib};
 
-use crate::{ui::Window, APP_ID};
+use crate::{gps::Gps, ui::Window, APP_ID};
 
 mod imp {
+
     use super::*;
 
     #[derive(Default)]
-    pub struct Application {}
+    pub struct Application {
+        pub(super) gps: Gps,
+    }
 
     #[glib::object_subclass]
     impl ObjectSubclass for Application {
@@ -60,6 +63,24 @@ impl Application {
             .property("resource-base-path", "/io/github/seadve/Delta/")
             .property("flags", gio::ApplicationFlags::NON_UNIQUE)
             .build()
+    }
+
+    /// Returns the global instance of `Application`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the app is not running or if this is called on a non-main thread.
+    pub fn get() -> Self {
+        debug_assert!(
+            gtk::is_initialized_main_thread(),
+            "application must only be accessed in the main thread"
+        );
+
+        gio::Application::default().unwrap().downcast().unwrap()
+    }
+
+    pub fn gps(&self) -> Gps {
+        self.imp().gps.clone()
     }
 
     fn setup_actions(&self) {

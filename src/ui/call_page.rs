@@ -6,8 +6,8 @@ use gtk::{
 
 use crate::{
     call::{Call, CallState},
-    config,
     peer::Peer,
+    Application,
 };
 
 mod imp {
@@ -133,6 +133,12 @@ mod imp {
                 .bind("peer", &peer_signals, "target")
                 .build();
 
+            Application::get()
+                .gps()
+                .connect_location_notify(clone!(@weak obj => move |_| {
+                    obj.update_caller_distance_label();
+                }));
+
             obj.update_stack();
             obj.update_caller_name_label();
             obj.update_caller_distance_label();
@@ -242,12 +248,17 @@ impl CallPage {
     fn update_caller_distance_label(&self) {
         let imp = self.imp();
 
-        let distance = self
+        let distance_text = self
             .call()
             .and_then(|call| call.peer().location())
-            .map(|location| format!("{:.2} m away", config::location().distance(&location)))
+            .and_then(|location| {
+                Application::get()
+                    .gps()
+                    .location()
+                    .map(|l| format!("{:.2} m away", l.distance(&location)))
+            })
             .unwrap_or_default();
-        imp.caller_distance_label.set_label(&distance);
+        imp.caller_distance_label.set_label(&distance_text);
     }
 
     fn update_stack(&self) {

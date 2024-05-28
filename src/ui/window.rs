@@ -6,6 +6,7 @@ use crate::{
     call::{Call, CallState},
     client::{Client, MessageDestination},
     config,
+    gps::FixMode,
     peer::Peer,
     stt::Stt,
     tts,
@@ -28,6 +29,8 @@ mod imp {
         pub(super) main_stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub(super) main_page: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub(super) gps_status_icon: TemplateChild<gtk::Image>,
         #[template_child]
         pub(super) view_stack: TemplateChild<gtk::Stack>,
         #[template_child]
@@ -161,9 +164,6 @@ mod imp {
                 }));
 
             self.map_view.bind_model(client.peer_list());
-            let location = config::location();
-            self.map_view
-                .set_location(location.latitude, location.longitude);
 
             let placeholder_label = gtk::Label::builder()
                 .margin_top(12)
@@ -207,6 +207,16 @@ mod imp {
                 }));
 
             self.client.set(client.clone()).unwrap();
+
+            let gps = Application::get().gps();
+            gps.connect_fix_mode_notify(clone!(@weak obj => move |_| {
+                obj.update_gps_status_icon();
+            }));
+            gps.connect_location_notify(clone!(@weak obj => move |_| {
+                obj.update_location();
+            }));
+            obj.update_gps_status_icon();
+            obj.update_location();
 
             if false {
                 // Add some dummy peers
@@ -373,5 +383,46 @@ impl Window {
         // TODO: Implement voice commands
 
         tracing::debug!("Voice command: {}", command);
+    }
+
+    fn update_gps_status_icon(&self) {
+        let imp = self.imp();
+
+        let gps = Application::get().gps();
+
+        match gps.fix_mode() {
+            FixMode::None => {
+                imp.gps_status_icon.remove_css_class("success");
+                imp.gps_status_icon.remove_css_class("warning");
+
+                imp.gps_status_icon.add_css_class("error");
+            }
+            FixMode::TwoD => {
+                imp.gps_status_icon.remove_css_class("success");
+                imp.gps_status_icon.remove_css_class("error");
+
+                imp.gps_status_icon.add_css_class("warning");
+            }
+            FixMode::ThreeD => {
+                imp.gps_status_icon.remove_css_class("warning");
+                imp.gps_status_icon.remove_css_class("error");
+
+                imp.gps_status_icon.add_css_class("success");
+            }
+        }
+    }
+
+    fn update_location(&self) {
+        let imp = self.imp();
+
+        let gps = Application::get().gps();
+        let location = gps.location();
+
+        let client = imp.client.get().unwrap();
+        client.set_location(location.clone());
+
+        let location = location.unwrap_or_default();
+        imp.map_view
+            .set_location(location.latitude, location.longitude);
     }
 }

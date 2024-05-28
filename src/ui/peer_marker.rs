@@ -1,7 +1,7 @@
 use gtk::glib::{self, clone, closure_local};
 use shumate::{prelude::*, subclass::prelude::*};
 
-use crate::{config, peer::Peer};
+use crate::{peer::Peer, Application};
 
 mod imp {
     use std::{
@@ -83,6 +83,12 @@ mod imp {
                     obj.emit_by_name::<()>("called", &[]);
                 }));
 
+            Application::get()
+                .gps()
+                .connect_location_notify(clone!(@weak obj => move |_| {
+                    obj.update_distance_label();
+                }));
+
             obj.update_name_label();
             obj.update_distance_label();
             obj.update_location();
@@ -151,23 +157,30 @@ impl PeerMarker {
     fn update_distance_label(&self) {
         let imp = self.imp();
 
-        let distance = imp
+        let distance_text = imp
             .peer
             .borrow()
             .as_ref()
             .and_then(|peer| peer.location())
-            .map(|location| format!("{:.2} m", config::location().distance(&location)))
-            .unwrap_or_default();
-        imp.distance_label.set_text(&distance);
+            .and_then(|location| {
+                Application::get()
+                    .gps()
+                    .location()
+                    .map(|l| format!("{:.2} m", l.distance(&location)))
+            });
+        imp.distance_label
+            .set_text(&distance_text.unwrap_or_default());
     }
 
     fn update_location(&self) {
         let imp = self.imp();
 
-        let location = imp.peer.borrow().as_ref().and_then(|peer| peer.location());
-        self.set_location(
-            location.as_ref().map(|l| l.latitude).unwrap_or_default(),
-            location.as_ref().map(|l| l.longitude).unwrap_or_default(),
-        );
+        let location = imp
+            .peer
+            .borrow()
+            .as_ref()
+            .and_then(|peer| peer.location())
+            .unwrap_or_default();
+        self.set_location(location.latitude, location.longitude);
     }
 }

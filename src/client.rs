@@ -43,7 +43,7 @@ pub enum MessageDestination {
 
 mod imp {
     use std::{
-        cell::{OnceCell, RefCell},
+        cell::{Cell, OnceCell, RefCell},
         sync::OnceLock,
     };
 
@@ -56,6 +56,9 @@ mod imp {
     pub struct Client {
         #[property(get)]
         pub(super) active_call: RefCell<Option<Call>>,
+
+        pub(super) location: RefCell<Option<Location>>,
+        pub(super) has_peer_subscribed: Cell<bool>,
 
         pub(super) command_tx: OnceCell<async_channel::Sender<Command>>,
         pub(super) call_incoming_response_tx:
@@ -190,6 +193,21 @@ impl Client {
         active_call.start_end();
 
         Ok(())
+    }
+
+    pub fn set_location(&self, location: Option<Location>) {
+        let imp = self.imp();
+
+        imp.location.replace(location.clone());
+
+        if imp.has_peer_subscribed.get() {
+            glib::spawn_future_local(clone!(@weak self as obj => async move {
+                obj.publish(PublishData::PropertyChanged(vec![Property::Location(
+                    location.unwrap_or_default(),
+                )]))
+                .await;
+            }));
+        }
     }
 
     fn set_active_call(&self, call: Option<Call>) {
@@ -534,11 +552,15 @@ impl Client {
             SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
                 ..
             })) => {
+                let location = imp.location.borrow().clone().unwrap_or_default();
+
                 self.publish(PublishData::PropertyChanged(vec![
                     Property::Name(config::name()),
-                    Property::Location(config::location()),
+                    Property::Location(location),
                 ]))
                 .await;
+
+                imp.has_peer_subscribed.set(true);
             }
             SwarmEvent::NewListenAddr { address, .. } => {
                 tracing::trace!("Local node is listening on {address}");

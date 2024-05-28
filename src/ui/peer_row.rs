@@ -1,7 +1,7 @@
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib::{self, clone, closure_local};
 
-use crate::{config, location::Location, peer::Peer};
+use crate::{peer::Peer, Application};
 
 mod imp {
     use std::{cell::OnceCell, sync::OnceLock};
@@ -58,18 +58,17 @@ mod imp {
             peer.bind_property("name", &*obj, "title")
                 .sync_create()
                 .build();
-            peer.bind_property("location", &*obj, "subtitle")
-                .transform_to(|_, location: Option<Location>| {
-                    Some(
-                        location
-                            .map(|location| {
-                                format!("{:.2} m away", config::location().distance(&location))
-                            })
-                            .unwrap_or_default(),
-                    )
-                })
-                .sync_create()
-                .build();
+            peer.connect_location_notify(clone!(@weak obj => move |_| {
+                obj.update_subtitle();
+            }));
+
+            Application::get()
+                .gps()
+                .connect_location_notify(clone!(@weak obj => move |_| {
+                    obj.update_subtitle();
+                }));
+
+            obj.update_subtitle();
         }
 
         fn signals() -> &'static [Signal] {
@@ -112,5 +111,19 @@ impl PeerRow {
         F: Fn(&Self) + 'static,
     {
         self.connect_closure("viewed-on-map", false, closure_local!(|obj: &Self| f(obj)))
+    }
+
+    fn update_subtitle(&self) {
+        let subtitle = self
+            .peer()
+            .location()
+            .and_then(|location| {
+                Application::get()
+                    .gps()
+                    .location()
+                    .map(|l| format!("{:.2} m away", l.distance(&location)))
+            })
+            .unwrap_or_default();
+        self.set_subtitle(&subtitle);
     }
 }

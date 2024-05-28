@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 const EARTH_RADIUS: f64 = 6_378_137.0;
 
-#[derive(Debug, Clone, Deserialize, Serialize, glib::Boxed)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, glib::Boxed)]
 #[boxed_type(name = "DeltaLocation", nullable)]
 pub struct Location {
     pub latitude: f64,
@@ -21,5 +21,14 @@ impl Location {
 
         (lat1.sin() * lat2.sin() + lat1.cos() * lat2.cos() * (lon2 - lon1).cos()).acos()
             * EARTH_RADIUS
+    }
+}
+
+impl Default for Location {
+    fn default() -> Self {
+        Location {
+            latitude: 0.0,
+            longitude: 0.0,
+        }
     }
 }

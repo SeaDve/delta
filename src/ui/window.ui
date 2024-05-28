@@ -11,12 +11,25 @@
             <child>
               <object class="GtkWindowHandle">
                 <property name="child">
-                  <object class="GtkStackSwitcher">
-                    <property name="stack">view_stack</property>
+                  <object class="GtkBox">
                     <property name="orientation">vertical</property>
-                    <style>
-                      <class name="view-switcher"/>
-                    </style>
+                    <child>
+                      <object class="GtkStackSwitcher">
+                        <property name="vexpand">True</property>
+                        <property name="stack">view_stack</property>
+                        <property name="orientation">vertical</property>
+                        <style>
+                          <class name="view-switcher"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImage" id="gps_status_icon">
+                        <property name="margin-top">6</property>
+                        <property name="margin-bottom">6</property>
+                        <property name="icon-name">globe-symbolic</property>
+                      </object>
+                    </child>
                   </object>
                 </property>
               </object>
