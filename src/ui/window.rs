@@ -311,8 +311,6 @@ impl Window {
         let client = imp.client.get().unwrap();
         client.set_location(location.clone());
 
-        let location = location.unwrap_or_default();
-        imp.map_view
-            .set_location(location.latitude, location.longitude);
+        imp.map_view.set_location(location);
     }
 }

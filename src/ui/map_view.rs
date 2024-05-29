@@ -7,7 +7,7 @@ use gtk::{
 };
 use shumate::prelude::*;
 
-use crate::{peer::Peer, peer_list::PeerList, ui::peer_marker::PeerMarker};
+use crate::{location::Location, peer::Peer, peer_list::PeerList, ui::peer_marker::PeerMarker};
 
 const DEFAULT_ZOOM_LEVEL: f64 = 16.0;
 const DEFAULT_GO_TO_DURATION: Duration = Duration::from_secs(1);
@@ -31,6 +31,8 @@ mod imp {
         pub(super) compass: TemplateChild<shumate::Compass>,
         #[template_child]
         pub(super) return_button: TemplateChild<gtk::Button>,
+
+        pub(super) location: RefCell<Option<Location>>,
 
         pub(super) marker_layer: OnceCell<shumate::MarkerLayer>,
         pub(super) our_marker: OnceCell<shumate::Marker>,
@@ -91,6 +93,8 @@ mod imp {
                     let our_marker = imp.our_marker.get().unwrap();
                     obj.go_to(our_marker.latitude(), our_marker.longitude());
                 }));
+
+            obj.set_location(None);
         }
 
         fn dispose(&self) {
@@ -176,14 +180,24 @@ impl MapView {
         );
     }
 
-    pub fn set_location(&self, latitude: f64, longitude: f64) {
+    pub fn set_location(&self, location: Option<Location>) {
         let imp = self.imp();
 
-        imp.our_marker
-            .get()
-            .unwrap()
-            .set_location(latitude, longitude);
-        imp.map.center_on(latitude, longitude);
+        let our_marker = imp.our_marker.get().unwrap();
+        our_marker.set_visible(location.is_some());
+
+        if let Some(location) = &location {
+            our_marker.set_location(location.latitude, location.longitude);
+            imp.map.center_on(location.latitude, location.longitude);
+        }
+
+        imp.location.replace(location);
+
+        self.update_return_button_sensitivity();
+    }
+
+    pub fn location(&self) -> Option<Location> {
+        self.imp().location.borrow().clone()
     }
 
     pub fn go_to(&self, latitude: f64, longitude: f64) {
@@ -195,5 +209,11 @@ impl MapView {
             DEFAULT_ZOOM_LEVEL,
             DEFAULT_GO_TO_DURATION.as_millis() as u32,
         );
+    }
+
+    fn update_return_button_sensitivity(&self) {
+        let imp = self.imp();
+
+        imp.return_button.set_sensitive(self.location().is_some());
     }
 }

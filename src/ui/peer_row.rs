@@ -60,6 +60,7 @@ mod imp {
                 .build();
             peer.connect_location_notify(clone!(@weak obj => move |_| {
                 obj.update_subtitle();
+                obj.update_view_on_map_button_sensitivity();
             }));
 
             Application::get()
@@ -69,6 +70,7 @@ mod imp {
                 }));
 
             obj.update_subtitle();
+            obj.update_view_on_map_button_sensitivity();
         }
 
         fn signals() -> &'static [Signal] {
@@ -125,5 +127,12 @@ impl PeerRow {
             })
             .unwrap_or_default();
         self.set_subtitle(&subtitle);
+    }
+
+    fn update_view_on_map_button_sensitivity(&self) {
+        let imp = self.imp();
+
+        let location = self.peer().location();
+        imp.view_on_map_button.set_sensitive(location.is_some());
     }
 }

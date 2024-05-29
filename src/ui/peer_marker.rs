@@ -175,12 +175,11 @@ impl PeerMarker {
     fn update_location(&self) {
         let imp = self.imp();
 
-        let location = imp
-            .peer
-            .borrow()
-            .as_ref()
-            .and_then(|peer| peer.location())
-            .unwrap_or_default();
-        self.set_location(location.latitude, location.longitude);
+        let location = imp.peer.borrow().as_ref().and_then(|peer| peer.location());
+        self.set_visible(location.is_some());
+
+        if let Some(location) = location {
+            self.set_location(location.latitude, location.longitude);
+        }
     }
 }
