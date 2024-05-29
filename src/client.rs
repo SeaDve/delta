@@ -4,7 +4,7 @@ use anyhow::{anyhow, ensure, Context, Result};
 use futures_channel::oneshot;
 use futures_util::{select, FutureExt, StreamExt};
 use gtk::{
-    glib::{self, clone, closure_local},
+    glib::{self, clone},
     prelude::*,
     subclass::prelude::*,
 };
@@ -28,26 +28,8 @@ use crate::{
 
 const AUDIO_STREAM_PROTOCOL: StreamProtocol = StreamProtocol::new("/audio");
 
-#[derive(Clone, glib::Boxed)]
-#[boxed_type(name = "DeltaMessageReceived")]
-pub struct MessageReceived {
-    pub source: PeerId,
-    pub message: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub enum MessageDestination {
-    All,
-    Peers(Vec<PeerId>),
-}
-
 mod imp {
-    use std::{
-        cell::{Cell, OnceCell, RefCell},
-        sync::OnceLock,
-    };
-
-    use glib::subclass::Signal;
+    use std::cell::{Cell, OnceCell, RefCell};
 
     use super::*;
 
@@ -87,16 +69,6 @@ mod imp {
                 }
             }));
         }
-
-        fn signals() -> &'static [Signal] {
-            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
-
-            SIGNALS.get_or_init(|| {
-                vec![Signal::builder("message-received")
-                    .param_types([MessageReceived::static_type()])
-                    .build()]
-            })
-        }
     }
 }
 
@@ -109,27 +81,8 @@ impl Client {
         glib::Object::new()
     }
 
-    pub fn connect_message_received<F>(&self, f: F) -> glib::SignalHandlerId
-    where
-        F: Fn(&Self, &MessageReceived) + 'static,
-    {
-        self.connect_closure(
-            "message-received",
-            false,
-            closure_local!(|obj: &Self, message: &MessageReceived| f(obj, message)),
-        )
-    }
-
     pub fn peer_list(&self) -> &PeerList {
         &self.imp().peer_list
-    }
-
-    pub async fn publish_message(&self, message: &str, destination: MessageDestination) {
-        self.publish(PublishData::Message {
-            message: message.to_string(),
-            destination,
-        })
-        .await;
     }
 
     pub async fn call_request(&self, destination: PeerId) -> Result<()> {
@@ -370,14 +323,14 @@ impl Client {
             }
             SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Message {
                 propagation_source: their_peer_id,
-                message: raw_message,
+                message,
                 ..
             })) => {
                 tracing::debug!("received message from {}", their_peer_id);
 
-                match serde_json::from_slice(&raw_message.data)? {
+                match serde_json::from_slice(&message.data)? {
                     PublishData::PropertyChanged(props) => {
-                        let their_peer_id = raw_message
+                        let their_peer_id = message
                             .source
                             .context("Received property changed without unknown source")?;
                         let peer = self
@@ -393,29 +346,6 @@ impl Client {
                                     peer.set_location(Some(location));
                                 }
                             }
-                        }
-                    }
-                    PublishData::Message {
-                        message,
-                        destination,
-                    } => {
-                        let should_accept = match destination {
-                            MessageDestination::All => true,
-                            MessageDestination::Peers(ref peer_ids) => {
-                                peer_ids.contains(swarm.local_peer_id())
-                            }
-                        };
-
-                        if let Some(source_peer_id) = raw_message.source {
-                            if should_accept {
-                                let message_received = MessageReceived {
-                                    source: source_peer_id,
-                                    message,
-                                };
-                                self.emit_by_name::<()>("message-received", &[&message_received]);
-                            }
-                        } else {
-                            tracing::warn!("Received message without source peer id");
                         }
                     }
                     PublishData::CallRequest { ref destination }
@@ -597,10 +527,6 @@ enum Property {
 #[derive(Debug, Serialize, Deserialize)]
 enum PublishData {
     PropertyChanged(Vec<Property>),
-    Message {
-        destination: MessageDestination,
-        message: String,
-    },
     CallRequest {
         destination: PeerId,
     },
