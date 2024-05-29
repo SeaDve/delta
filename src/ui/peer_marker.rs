@@ -151,13 +151,13 @@ impl PeerMarker {
             .as_ref()
             .map(|peer| peer.name())
             .unwrap_or_default();
-        imp.name_label.set_text(&name);
+        imp.name_label.set_label(&name);
     }
 
     fn update_distance_label(&self) {
         let imp = self.imp();
 
-        let distance_text = imp
+        let distance_str = imp
             .peer
             .borrow()
             .as_ref()
@@ -169,7 +169,7 @@ impl PeerMarker {
                     .map(|l| format!("{:.2} m", l.distance(&location)))
             });
         imp.distance_label
-            .set_text(&distance_text.unwrap_or_default());
+            .set_label(&distance_str.unwrap_or_default());
     }
 
     fn update_location(&self) {

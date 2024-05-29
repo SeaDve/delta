@@ -248,7 +248,7 @@ impl CallPage {
     fn update_caller_distance_label(&self) {
         let imp = self.imp();
 
-        let distance_text = self
+        let distance_str = self
             .call()
             .and_then(|call| call.peer().location())
             .and_then(|location| {
@@ -258,7 +258,7 @@ impl CallPage {
                     .map(|l| format!("{:.2} m away", l.distance(&location)))
             })
             .unwrap_or_default();
-        imp.caller_distance_label.set_label(&distance_text);
+        imp.caller_distance_label.set_label(&distance_str);
     }
 
     fn update_stack(&self) {

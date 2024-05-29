@@ -74,7 +74,7 @@ impl ListeningPage {
     pub fn set_command(&self, command: &str) {
         let imp = self.imp();
 
-        imp.command_label.set_text(command);
+        imp.command_label.set_label(command);
     }
 
     pub fn connect_cancelled<F>(&self, f: F) -> glib::SignalHandlerId
