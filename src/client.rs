@@ -156,7 +156,7 @@ impl Client {
         if imp.has_peer_subscribed.get() {
             glib::spawn_future_local(clone!(@weak self as obj => async move {
                 obj.publish(PublishData::PropertyChanged(vec![Property::Location(
-                    location.unwrap_or_default(),
+                    location,
                 )]))
                 .await;
             }));
@@ -343,7 +343,7 @@ impl Client {
                                     peer.set_name(name);
                                 }
                                 Property::Location(location) => {
-                                    peer.set_location(Some(location));
+                                    peer.set_location(location);
                                 }
                             }
                         }
@@ -482,7 +482,7 @@ impl Client {
             SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
                 ..
             })) => {
-                let location = imp.location.borrow().clone().unwrap_or_default();
+                let location = imp.location.borrow().clone();
 
                 self.publish(PublishData::PropertyChanged(vec![
                     Property::Name(config::name()),
@@ -521,7 +521,7 @@ enum CallIncomingResponse {
 #[derive(Debug, Serialize, Deserialize)]
 enum Property {
     Name(String),
-    Location(Location),
+    Location(Option<Location>),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
