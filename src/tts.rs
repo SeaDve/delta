@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use gtk::{gio, glib};
+use gtk::gio;
 use once_cell::unsync::OnceCell;
 use speech_dispatcher::{Connection, Mode, Priority};
 
@@ -23,18 +23,14 @@ fn instance() -> Result<Connection> {
 pub fn speak(text: impl Into<String>) {
     let text = text.into();
 
-    glib::spawn_future_local(async move {
-        gio::spawn_blocking(move || {
-            if let Err(err) = cancel() {
-                tracing::warn!("Failed to stop: {:?}", err);
-            }
+    gio::spawn_blocking(move || {
+        if let Err(err) = cancel() {
+            tracing::warn!("Failed to stop: {:?}", err);
+        }
 
-            if let Err(err) = say(text, Priority::Important) {
-                tracing::warn!("Failed to say: {:?}", err);
-            }
-        })
-        .await
-        .unwrap();
+        if let Err(err) = say(text, Priority::Important) {
+            tracing::warn!("Failed to say: {:?}", err);
+        }
     });
 }
 
