@@ -8,7 +8,7 @@
       <class name="view"/>
     </style>
     <child>
-      <object class="AdwStatusPage">
+      <object class="AdwStatusPage" id="status_page">
         <property name="title">Listening…</property>
         <property name="child">
           <object class="GtkBox">

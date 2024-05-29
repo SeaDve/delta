@@ -15,6 +15,8 @@ mod imp {
     #[template(file = "listening_page.ui")]
     pub struct ListeningPage {
         #[template_child]
+        pub(super) status_page: TemplateChild<adw::StatusPage>, // Unused
+        #[template_child]
         pub(super) command_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) cancel_button: TemplateChild<gtk::Button>,
