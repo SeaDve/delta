@@ -4,7 +4,7 @@ use gtk::glib::{self, clone};
 use crate::{
     application::Application,
     call::{Call, CallState},
-    client::Client,
+    client::{BroadcastType, Client},
     gps::FixMode,
     peer::Peer,
     stt::Stt,
@@ -23,6 +23,8 @@ mod imp {
     #[template(file = "window.ui")]
     pub struct Window {
         #[template_child]
+        pub(super) toast_overlay: TemplateChild<adw::ToastOverlay>,
+        #[template_child]
         pub(super) main_stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub(super) main_page: TemplateChild<gtk::Box>,
@@ -34,6 +36,12 @@ mod imp {
         pub(super) map_view: TemplateChild<MapView>,
         #[template_child]
         pub(super) peer_list_box: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        pub(super) sos_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(super) hazard_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(super) yielding_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub(super) call_page: TemplateChild<CallPage>,
         #[template_child]
@@ -71,6 +79,26 @@ mod imp {
 
             let client = Client::new();
 
+            client.connect_broadcast_received(clone!(@weak obj => move |_, peer, broadcast| {
+                let imp = obj.imp();
+
+                let text = match broadcast {
+                    BroadcastType::Sos => {
+                        format!("{} is in a life-threatening situation", peer.name())
+                    }
+                    BroadcastType::Hazard => {
+                        format!("{} is in a hazardous situation", peer.name())
+                    }
+                    BroadcastType::Yielding => {
+                        format!("{} is yielding", peer.name())
+                    }
+                };
+
+                tts::speak(&text);
+
+                let toast = adw::Toast::new(&text);
+                imp.toast_overlay.add_toast(toast);
+            }));
             client.connect_active_call_notify(clone!(@weak obj => move |client| {
                 let imp = obj.imp();
 
@@ -116,6 +144,25 @@ mod imp {
                         if let Err(err) = client.call_request(peer_id).await {
                             tracing::error!("Failed to request call: {:?}", err);
                         }
+                    });
+                }));
+
+            self.sos_button
+                .connect_clicked(clone!(@weak client => move |_| {
+                    glib::spawn_future_local(async move {
+                         client.broadcast(BroadcastType::Sos).await;
+                    });
+                }));
+            self.hazard_button
+                .connect_clicked(clone!(@weak client => move |_| {
+                    glib::spawn_future_local(async move {
+                        client.broadcast(BroadcastType::Hazard).await;
+                    });
+                }));
+            self.yielding_button
+                .connect_clicked(clone!(@weak client => move |_| {
+                    glib::spawn_future_local(async move {
+                        client.broadcast(BroadcastType::Yielding).await;
                     });
                 }));
 
