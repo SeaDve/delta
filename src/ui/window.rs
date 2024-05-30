@@ -103,7 +103,7 @@ mod imp {
                     let imp = obj.imp();
 
                     let location = peer.location().unwrap();
-                    imp.map_view.go_to(location.latitude, location.longitude);
+                    imp.map_view.go_to(location);
 
                     imp.view_stack.set_visible_child(&*imp.map_view);
                 }));
@@ -244,7 +244,7 @@ mod imp {
                         let imp = obj.imp();
 
                         let location = row.peer().location().unwrap();
-                        imp.map_view.go_to(location.latitude, location.longitude);
+                        imp.map_view.go_to(location);
 
                         imp.view_stack.set_visible_child(&*imp.map_view);
                     }));

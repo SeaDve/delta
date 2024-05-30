@@ -93,7 +93,10 @@ mod imp {
                     let imp = obj.imp();
 
                     let our_marker = imp.our_marker.get().unwrap();
-                    obj.go_to(our_marker.latitude(), our_marker.longitude());
+                    obj.go_to(Location {
+                        latitude: our_marker.latitude(),
+                        longitude: our_marker.longitude(),
+                    });
                 }));
 
             obj.set_location(None);
@@ -202,12 +205,12 @@ impl MapView {
         self.imp().location.borrow().clone()
     }
 
-    pub fn go_to(&self, latitude: f64, longitude: f64) {
+    pub fn go_to(&self, location: Location) {
         let imp = self.imp();
 
         imp.map.go_to_full_with_duration(
-            latitude,
-            longitude,
+            location.latitude,
+            location.longitude,
             DEFAULT_ZOOM_LEVEL,
             DEFAULT_GO_TO_DURATION.as_millis() as u32,
         );
