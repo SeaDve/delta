@@ -23,12 +23,3 @@ impl Location {
             * EARTH_RADIUS
     }
 }
-
-impl Default for Location {
-    fn default() -> Self {
-        Location {
-            latitude: 0.0,
-            longitude: 0.0,
-        }
-    }
-}
