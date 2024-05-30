@@ -6,6 +6,7 @@ use crate::{
     call::{Call, CallState},
     client::{BroadcastType, Client},
     gps::FixMode,
+    location::Location,
     peer::Peer,
     stt::Stt,
     tts,
@@ -97,6 +98,20 @@ mod imp {
                 tts::speak(&text);
 
                 let toast = adw::Toast::new(&text);
+                toast.connect_button_clicked(clone!(@weak obj, @weak peer => move |_| {
+                    let imp = obj.imp();
+
+                    let location = peer.location().unwrap();
+                    imp.map_view.go_to(location.latitude, location.longitude);
+
+                    imp.view_stack.set_visible_child(&*imp.map_view);
+                }));
+
+                peer.bind_property("location", &toast, "button-label")
+                    .transform_to(|_, location: Option<Location>| Some(location.map(|_| "View")))
+                    .sync_create()
+                    .build();
+
                 imp.toast_overlay.add_toast(toast);
             }));
             client.connect_active_call_notify(clone!(@weak obj => move |client| {
