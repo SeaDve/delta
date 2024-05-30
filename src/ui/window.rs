@@ -7,7 +7,7 @@ use gtk::{
 use crate::{
     application::Application,
     call::{Call, CallState},
-    client::{BroadcastType, Client},
+    client::{AlertType, Client},
     gps::FixMode,
     location::Location,
     peer::Peer,
@@ -83,21 +83,21 @@ mod imp {
 
             let client = Client::new();
 
-            client.connect_broadcast_received(clone!(@weak obj => move |_, peer, broadcast| {
+            client.connect_alert_received(clone!(@weak obj => move |_, peer, alert_type| {
                 let imp = obj.imp();
 
-                let (text, alert_repeat_count, alert_color) = match broadcast {
-                    BroadcastType::Sos => (
+                let (text, alert_repeat_count, alert_color) = match alert_type {
+                    AlertType::Sos => (
                         format!("{} is in a life-threatening situation", peer.name()),
                         10,
                         gdk::RGBA::new(0.88, 0.11, 0.14, 1.0), // Red 3
                     ),
-                    BroadcastType::Hazard => (
+                    AlertType::Hazard => (
                         format!("{} is in a hazardous situation", peer.name()),
                         5,
                         gdk::RGBA::new(0.96, 0.76, 0.07, 1.0), // Yellow 3
                     ),
-                    BroadcastType::Yielding => (
+                    AlertType::Yielding => (
                         format!("{} is yielding", peer.name()),
                         3,
                         gdk::RGBA::new(0.21, 0.52, 0.89, 1.0), // Blue 3
@@ -193,19 +193,19 @@ mod imp {
             self.sos_button
                 .connect_clicked(clone!(@weak client => move |_| {
                     glib::spawn_future_local(async move {
-                         client.broadcast(BroadcastType::Sos).await;
+                         client.publish_alert(AlertType::Sos).await;
                     });
                 }));
             self.hazard_button
                 .connect_clicked(clone!(@weak client => move |_| {
                     glib::spawn_future_local(async move {
-                        client.broadcast(BroadcastType::Hazard).await;
+                        client.publish_alert(AlertType::Hazard).await;
                     });
                 }));
             self.yielding_button
                 .connect_clicked(clone!(@weak client => move |_| {
                     glib::spawn_future_local(async move {
-                        client.broadcast(BroadcastType::Yielding).await;
+                        client.publish_alert(AlertType::Yielding).await;
                     });
                 }));
 

@@ -29,8 +29,8 @@ use crate::{
 const AUDIO_STREAM_PROTOCOL: StreamProtocol = StreamProtocol::new("/audio");
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, glib::Enum)]
-#[enum_type(name = "DeltaBroadcastType")]
-pub enum BroadcastType {
+#[enum_type(name = "DeltaAlertType")]
+pub enum AlertType {
     Sos,
     Hazard,
     Yielding,
@@ -87,8 +87,8 @@ mod imp {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
 
             SIGNALS.get_or_init(|| {
-                vec![Signal::builder("broadcast-received")
-                    .param_types([Peer::static_type(), BroadcastType::static_type()])
+                vec![Signal::builder("alert-received")
+                    .param_types([Peer::static_type(), AlertType::static_type()])
                     .build()]
             })
         }
@@ -104,17 +104,15 @@ impl Client {
         glib::Object::new()
     }
 
-    pub fn connect_broadcast_received<F>(&self, f: F) -> glib::SignalHandlerId
+    pub fn connect_alert_received<F>(&self, f: F) -> glib::SignalHandlerId
     where
-        F: Fn(&Self, &Peer, BroadcastType) + 'static,
+        F: Fn(&Self, &Peer, AlertType) + 'static,
     {
         self.connect_closure(
-            "broadcast-received",
+            "alert-received",
             false,
-            closure_local!(|obj: &Self, peer: &Peer, broadcast_type: BroadcastType| f(
-                obj,
-                peer,
-                broadcast_type
+            closure_local!(|obj: &Self, peer: &Peer, alert_type: AlertType| f(
+                obj, peer, alert_type
             )),
         )
     }
@@ -123,8 +121,8 @@ impl Client {
         &self.imp().peer_list
     }
 
-    pub async fn broadcast(&self, broadcast_type: BroadcastType) {
-        self.publish(PublishData::Broadcast(broadcast_type)).await;
+    pub async fn publish_alert(&self, alert_type: AlertType) {
+        self.publish(PublishData::Alert(alert_type)).await;
     }
 
     pub async fn call_request(&self, destination: PeerId) -> Result<()> {
@@ -516,9 +514,9 @@ impl Client {
                             CallRequestResponse::Cancelled => unreachable!(),
                         }
                     }
-                    PublishData::Broadcast(broadcast_type) => {
+                    PublishData::Alert(alert_type) => {
                         let peer = self.peer_list().get(&their_peer_id).unwrap();
-                        self.emit_by_name::<()>("broadcast-received", &[&peer, &broadcast_type]);
+                        self.emit_by_name::<()>("alert-received", &[&peer, &alert_type]);
                     }
                     other_published_data => {
                         tracing::debug!("Ignoring published data: {:?}", other_published_data);
@@ -573,7 +571,7 @@ enum Property {
 #[derive(Debug, Serialize, Deserialize)]
 enum PublishData {
     PropertyChanged(Vec<Property>),
-    Broadcast(BroadcastType),
+    Alert(AlertType),
     CallRequest {
         destination: PeerId,
     },
