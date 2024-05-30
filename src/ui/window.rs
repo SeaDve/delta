@@ -98,6 +98,7 @@ mod imp {
                 tts::speak(&text);
 
                 let toast = adw::Toast::new(&text);
+
                 toast.connect_button_clicked(clone!(@weak obj, @weak peer => move |_| {
                     let imp = obj.imp();
 
@@ -107,10 +108,13 @@ mod imp {
                     imp.view_stack.set_visible_child(&*imp.map_view);
                 }));
 
-                peer.bind_property("location", &toast, "button-label")
+                let binding = peer.bind_property("location", &toast, "button-label")
                     .transform_to(|_, location: Option<Location>| Some(location.map(|_| "View")))
                     .sync_create()
                     .build();
+                toast.connect_dismissed(move |_| {
+                    binding.unbind();
+                });
 
                 imp.toast_overlay.add_toast(toast);
             }));
