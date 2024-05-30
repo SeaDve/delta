@@ -3,6 +3,8 @@
   <template class="DeltaPeerMarker" parent="ShumateMarker">
     <property name="child">
       <object class="GtkBox">
+        <property name="valign">center</property>
+        <property name="halign">center</property>
         <child>
           <object class="GtkBox">
             <property name="orientation">vertical</property>

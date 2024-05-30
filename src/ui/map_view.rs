@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use gtk::{
+    gdk,
     glib::{self, clone, closure_local},
     prelude::*,
     subclass::prelude::*,
@@ -38,7 +39,7 @@ mod imp {
 
         pub(super) marker_layer: OnceCell<shumate::MarkerLayer>,
         pub(super) our_marker: OnceCell<shumate::Marker>,
-        pub(super) peer_markers: RefCell<Vec<PeerMarker>>,
+        pub(super) peer_markers: RefCell<Vec<(Peer, PeerMarker)>>,
     }
 
     #[glib::object_subclass]
@@ -170,15 +171,18 @@ impl MapView {
 
                     imp.marker_layer.get().unwrap().add_marker(&marker);
 
-                    marker
+                    (peer, marker)
                 });
                 let removed = imp
                     .peer_markers
                     .borrow_mut()
-                    .splice(position as usize..(removed + position) as usize, new_markers)
+                    .splice(
+                        position as usize..(removed + position) as usize,
+                        new_markers,
+                    )
                     .collect::<Vec<_>>();
 
-                for marker in removed {
+                for (_, marker) in removed {
                     imp.marker_layer.get().unwrap().remove_marker(&marker);
                 }
             }),
@@ -218,6 +222,16 @@ impl MapView {
             DEFAULT_ZOOM_LEVEL,
             GO_TO_DURATION.as_millis() as u32,
         );
+    }
+
+    pub fn play_alert_animation(&self, peer: &Peer, repeat_count: u32, color: gdk::RGBA) {
+        let imp = self.imp();
+
+        if let Some((_, marker)) = imp.peer_markers.borrow().iter().find(|(p, _)| p == peer) {
+            marker.play_alert_animation(repeat_count, color);
+        } else {
+            tracing::warn!("Failed to play alert animation: No marker found for peer");
+        }
     }
 
     fn update_return_button_sensitivity(&self) {

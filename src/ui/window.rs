@@ -1,5 +1,8 @@
 use adw::{prelude::*, subclass::prelude::*};
-use gtk::glib::{self, clone};
+use gtk::{
+    gdk,
+    glib::{self, clone},
+};
 
 use crate::{
     application::Application,
@@ -83,21 +86,39 @@ mod imp {
             client.connect_broadcast_received(clone!(@weak obj => move |_, peer, broadcast| {
                 let imp = obj.imp();
 
-                let text = match broadcast {
-                    BroadcastType::Sos => {
-                        format!("{} is in a life-threatening situation", peer.name())
-                    }
-                    BroadcastType::Hazard => {
-                        format!("{} is in a hazardous situation", peer.name())
-                    }
-                    BroadcastType::Yielding => {
-                        format!("{} is yielding", peer.name())
-                    }
+                let (text, alert_repeat_count, alert_color) = match broadcast {
+                    BroadcastType::Sos => (
+                        format!("{} is in a life-threatening situation", peer.name()),
+                        10,
+                        gdk::RGBA::new(0.88, 0.11, 0.14, 1.0), // Red 3
+                    ),
+                    BroadcastType::Hazard => (
+                        format!("{} is in a hazardous situation", peer.name()),
+                        5,
+                        gdk::RGBA::new(0.96, 0.76, 0.07, 1.0), // Yellow 3
+                    ),
+                    BroadcastType::Yielding => (
+                        format!("{} is yielding", peer.name()),
+                        3,
+                        gdk::RGBA::new(0.21, 0.52, 0.89, 1.0), // Blue 3
+                    ),
                 };
 
                 tts::speak(&text);
 
-                let toast = adw::Toast::new(&text);
+                if imp
+                    .view_stack
+                    .visible_child()
+                    .is_some_and(|child| &child == imp.map_view.upcast_ref::<gtk::Widget>())
+                {
+                    imp.map_view
+                        .play_alert_animation(peer, alert_repeat_count, alert_color);
+                }
+
+                let toast = adw::Toast::builder()
+                    .title(text)
+                    .priority(adw::ToastPriority::High)
+                    .build();
 
                 toast.connect_button_clicked(clone!(@weak obj, @weak peer => move |_| {
                     let imp = obj.imp();
@@ -106,9 +127,12 @@ mod imp {
                     imp.map_view.go_to(location);
 
                     imp.view_stack.set_visible_child(&*imp.map_view);
+
+                    imp.map_view.play_alert_animation(&peer, alert_repeat_count, alert_color);
                 }));
 
-                let binding = peer.bind_property("location", &toast, "button-label")
+                let binding = peer
+                    .bind_property("location", &toast, "button-label")
                     .transform_to(|_, location: Option<Location>| Some(location.map(|_| "View")))
                     .sync_create()
                     .build();
