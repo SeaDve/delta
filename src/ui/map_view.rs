@@ -193,7 +193,11 @@ impl MapView {
 
         if let Some(location) = &location {
             our_marker.set_location(location.latitude, location.longitude);
-            imp.map.center_on(location.latitude, location.longitude);
+
+            let viewport = imp.map.viewport().unwrap();
+            if viewport.latitude() == 0.0 && viewport.longitude() == 0.0 {
+                imp.map.center_on(location.latitude, location.longitude);
+            }
         }
 
         imp.location.replace(location);
