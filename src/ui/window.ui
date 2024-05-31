@@ -6,7 +6,7 @@
     <property name="content">
       <object class="AdwToastOverlay" id="toast_overlay">
         <property name="child">
-          <object class="GtkStack" id="main_stack">
+          <object class="GtkStack" id="page_stack">
             <property name="transition-type">over-up-down</property>
             <child>
               <object class="GtkBox" id="main_page">
@@ -182,9 +182,7 @@
                       <object class="GtkStackPage">
                         <property name="icon-name">settings-symbolic</property>
                         <property name="child">
-                          <object class="GtkLabel">
-                            <property name="label">Settings Here</property>
-                          </object>
+                          <object class="DeltaSettingsView" id="settings_view"/>
                         </property>
                       </object>
                     </child>
@@ -197,6 +195,9 @@
             </child>
             <child>
               <object class="DeltaListeningPage" id="listening_page"/>
+            </child>
+            <child>
+              <object class="DeltaCrashedPage" id="crashed_page"/>
             </child>
           </object>
         </property>

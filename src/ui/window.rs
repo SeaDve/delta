@@ -12,7 +12,8 @@ use crate::{
     stt::Stt,
     tts,
     ui::{
-        call_page::CallPage, listening_page::ListeningPage, map_view::MapView, peer_row::PeerRow,
+        call_page::CallPage, crashed_page::CrashedPage, listening_page::ListeningPage,
+        map_view::MapView, peer_row::PeerRow, settings_view::SettingsView,
     },
 };
 
@@ -27,7 +28,7 @@ mod imp {
         #[template_child]
         pub(super) toast_overlay: TemplateChild<adw::ToastOverlay>,
         #[template_child]
-        pub(super) main_stack: TemplateChild<gtk::Stack>,
+        pub(super) page_stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub(super) main_page: TemplateChild<gtk::Box>,
         #[template_child]
@@ -45,9 +46,13 @@ mod imp {
         #[template_child]
         pub(super) yielding_button: TemplateChild<gtk::Button>,
         #[template_child]
+        pub(super) settings_view: TemplateChild<SettingsView>,
+        #[template_child]
         pub(super) call_page: TemplateChild<CallPage>,
         #[template_child]
         pub(super) listening_page: TemplateChild<ListeningPage>,
+        #[template_child]
+        pub(super) crashed_page: TemplateChild<CrashedPage>,
 
         pub(super) client: OnceCell<Client>,
 
@@ -154,7 +159,7 @@ mod imp {
                     }
 
                     imp.call_page.set_call(Some(active_call.clone()));
-                    imp.main_stack.set_visible_child(&*imp.call_page);
+                    imp.page_stack.set_visible_child(&*imp.call_page);
 
                     active_call.connect_state_notify(clone!(@weak obj => move |call| {
                         let imp = obj.imp();
@@ -162,7 +167,7 @@ mod imp {
                         match call.state() {
                             CallState::Ended => {
                                 imp.call_page.set_call(None::<Call>);
-                                imp.main_stack.set_visible_child(&*imp.main_page);
+                                imp.page_stack.set_visible_child(&*imp.main_page);
                             }
                             CallState::Ongoing => {}
                             CallState::Init | CallState::Incoming | CallState::Outgoing => {
@@ -172,7 +177,7 @@ mod imp {
                     }));
                 } else {
                     imp.call_page.set_call(None::<Call>);
-                    imp.main_stack.set_visible_child(&*imp.main_page);
+                    imp.page_stack.set_visible_child(&*imp.main_page);
                 }
             }));
 
@@ -205,6 +210,14 @@ mod imp {
                     });
                 }));
 
+            self.settings_view
+                .connect_crash_simulated(clone!(@weak obj => move |_| {
+                    // TODO do this as well upon detection of crash from accelerometer
+
+                    let imp = obj.imp();
+                    imp.page_stack.set_visible_child(&*imp.crashed_page);
+                }));
+
             self.call_page
                 .connect_incoming_accepted(clone!(@weak client => move |_| {
                     client.call_incoming_accept();
@@ -231,8 +244,26 @@ mod imp {
                 }));
 
             self.listening_page
-                .connect_cancelled(clone!(@weak obj => move |_|{
+                .connect_cancelled(clone!(@weak obj => move |_| {
                     obj.reset_stt_segments();
+                }));
+
+            self.crashed_page.connect_send_alert_requested(
+                clone!(@weak obj, @weak client => move |_| {
+                    // TODO Send text message to emergency contacts
+
+                    glib::spawn_future_local(async move {
+                        client.publish_alert(AlertType::Sos).await;
+
+                        let imp = obj.imp();
+                        imp.page_stack.set_visible_child(&*imp.main_page);
+                    });
+                }),
+            );
+            self.crashed_page
+                .connect_ignored(clone!(@weak obj => move |_| {
+                    let imp = obj.imp();
+                    imp.page_stack.set_visible_child(&*imp.main_page);
                 }));
 
             self.map_view.bind_model(client.peer_list());
@@ -317,7 +348,7 @@ impl Window {
         imp.stt_is_accepting_segments.set(false);
 
         imp.listening_page.set_command("");
-        imp.main_stack.set_visible_child(&*imp.main_page);
+        imp.page_stack.set_visible_child(&*imp.main_page);
     }
 
     fn handle_stt_segment(&self, segment: &str) {
@@ -351,7 +382,7 @@ impl Window {
                 .push_str(words[(position + 1)..].join(" ").as_str());
             imp.stt_is_accepting_segments.set(true);
 
-            imp.main_stack.set_visible_child(&*imp.listening_page);
+            imp.page_stack.set_visible_child(&*imp.listening_page);
         }
     }
 

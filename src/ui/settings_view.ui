@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="DeltaSettingsView" parent="GtkWidget">
+    <property name="layout-manager">
+      <object class="GtkBinLayout"/>
+    </property>
+    <child>
+      <object class="AdwPreferencesPage">
+        <child>
+          <object class="AdwPreferencesGroup">
+            <property name="title">Others</property>
+            <child>
+              <object class="AdwExpanderRow">
+                <property name="title">Developer Options</property>
+                <child>
+                  <object class="AdwActionRow">
+                    <property name="title">Simulate Crash</property>
+                    <property name="subtitle">Simulate a crash to test the crash detection feature.</property>
+                    <child>
+                      <object class="GtkButton" id="simulate_crash_button">
+                        <property name="valign">center</property>
+                        <property name="label">Test</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

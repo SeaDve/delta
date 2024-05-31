@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="DeltaCrashedPage" parent="GtkWidget">
+    <property name="layout-manager">
+      <object class="GtkBinLayout"/>
+    </property>
+    <style>
+      <class name="view"/>
+    </style>
+    <child>
+      <object class="AdwStatusPage" id="status_page">
+        <property name="title">Crash Detected!</property>
+        <property name="description">Your emergency contacts will be notified of your location.</property>
+        <property name="child">
+          <object class="GtkBox">
+            <property name="spacing">12</property>
+            <property name="orientation">vertical</property>
+            <property name="halign">center</property>
+            <child>
+              <object class="GtkButton" id="send_alert_button">
+                <property name="label">Send Alert</property>
+                <style>
+                  <class name="pill"/>
+                  <class name="suggested-action"/>
+                </style>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="ignore_button">
+                <property name="label">Ignore</property>
+                <style>
+                  <class name="pill"/>
+                </style>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </child>
+  </template>
+</interface>
