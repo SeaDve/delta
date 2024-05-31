@@ -4,7 +4,7 @@ use once_cell::unsync::OnceCell;
 use speech_dispatcher::{Connection, Mode, Priority};
 
 thread_local! {
-    static TTS: OnceCell<Connection> = OnceCell::new();
+    static TTS: OnceCell<Connection> = const { OnceCell::new() };
 }
 
 fn instance() -> Result<Connection> {
