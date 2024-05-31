@@ -248,7 +248,7 @@ impl Client {
 
                 let mdns = mdns::async_io::Behaviour::new(
                     mdns::Config {
-                        ttl: Duration::from_secs(10),
+                        ttl: Duration::from_secs(5),
                         query_interval: Duration::from_secs(1),
                         ..Default::default()
                     },
