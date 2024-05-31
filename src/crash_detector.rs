@@ -96,37 +96,40 @@ impl CrashDetector {
         imp.device.replace(Some(device));
 
         glib::spawn_future_local(clone!(@weak self as obj => async move {
+            let imp = obj.imp();
+
             let mut prev_values: Option<(f64, f64, f64)> = None;
 
             loop {
-                let values = obj.device_acceleration().unwrap();
+                match imp.device.borrow_mut().as_mut().unwrap().acceleration() {
+                    Ok((raw_x, raw_y, raw_z)) => {
+                        let x = convert_to_ms2(raw_x);
+                        let y = convert_to_ms2(raw_y);
+                        let z = convert_to_ms2(raw_z);
 
-                if let Some((prev_x, prev_y, prev_z)) = prev_values {
-                    let (x, y, z) = values;
+                        if let Some((prev_x, prev_y, prev_z)) = prev_values {
+                            let magnitude = ((x - prev_x).powi(2)
+                                + (y - prev_y).powi(2)
+                                + (z - prev_z).powi(2))
+                            .sqrt();
 
-                    let magnitude =
-                        ((x - prev_x).powi(2) + (y - prev_y).powi(2) + (z - prev_z).powi(2)).sqrt();
+                            if magnitude > IMPACT_SENSITIVITY {
+                                obj.emit_by_name::<()>("crash-detected", &[]);
+                            }
+                        }
 
-                    if magnitude > IMPACT_SENSITIVITY {
-                        obj.emit_by_name::<()>("crash-detected", &[]);
+                        prev_values = Some((x, y, z));
+                    }
+                    Err(err) => {
+                        tracing::error!("Failed to read device acceleration values: {:?}", err)
                     }
                 }
-
-                prev_values = Some(values);
 
                 glib::timeout_future(REFRESH_INTERVAL).await;
             }
         }));
 
         Ok(())
-    }
-
-    fn device_acceleration(&self) -> Result<(f64, f64, f64)> {
-        let imp = self.imp();
-
-        let (x, y, z) = imp.device.borrow_mut().as_mut().unwrap().acceleration()?;
-
-        Ok((convert_to_ms2(x), convert_to_ms2(y), convert_to_ms2(z)))
     }
 }
 
