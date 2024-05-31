@@ -18,6 +18,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
+name = "adxl345_driver2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73db65445e21166a64a7d0dbb4d04f11854e70b0005d8035091f81b229488c89"
+dependencies = [
+ "bitflags 2.5.0",
+ "c2rust-bitfields",
+ "embedded-hal 1.0.0",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -484,6 +495,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "c2rust-bitfields"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b43c3f07ab0ef604fa6f595aa46ec2f8a22172c975e186f6f5bf9829a3b72c41"
+dependencies = [
+ "c2rust-bitfields-derive",
+]
+
+[[package]]
+name = "c2rust-bitfields-derive"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3cbc102e2597c9744c8bd8c15915d554300601c91a079430d309816b0912545"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "cairo-rs"
 version = "0.19.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -696,6 +727,7 @@ dependencies = [
 name = "delta"
 version = "0.1.0"
 dependencies = [
+ "adxl345_driver2",
  "anyhow",
  "async-channel 2.2.1",
  "async-process 2.2.2",
@@ -711,6 +743,7 @@ dependencies = [
  "libp2p-stream",
  "libshumate",
  "once_cell",
+ "rppal",
  "serde",
  "serde_json",
  "speech-dispatcher",
@@ -810,6 +843,32 @@ name = "either"
 version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a47c1c47d2f5964e29c61246e81db715514cd532db6b5116a25ea3c03d6780a2"
+
+[[package]]
+name = "embedded-hal"
+version = "0.2.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35949884794ad573cf46071e41c9b60efb0cb311e3ca01f7af807af1debc66ff"
+dependencies = [
+ "nb 0.1.3",
+ "void",
+]
+
+[[package]]
+name = "embedded-hal"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "361a90feb7004eca4019fb28352a9465666b24f840f5c3cddf0ff13920590b89"
+
+[[package]]
+name = "embedded-hal-nb"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fba4268c14288c828995299e59b12babdbe170f6c6d73731af1b4648142e8605"
+dependencies = [
+ "embedded-hal 1.0.0",
+ "nb 1.1.0",
+]
 
 [[package]]
 name = "endi"
@@ -2281,6 +2340,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "nb"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "801d31da0513b6ec5214e9bf433a77966320625a37860f910be265be6e18d06f"
+dependencies = [
+ "nb 1.1.0",
+]
+
+[[package]]
+name = "nb"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d5439c4ad607c3c23abf66de8c8bf57ba8adcd1f129e699851a6e43935d339d"
+
+[[package]]
 name = "netlink-packet-core"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2924,6 +2998,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "rppal"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae44db779bd0898047804d22b662a9dc533b142c077b3f7e36003f658835c5b9"
+dependencies = [
+ "embedded-hal 0.2.7",
+ "embedded-hal 1.0.0",
+ "embedded-hal-nb",
+ "libc",
+ "nb 0.1.3",
+ "spin_sleep",
+ "void",
+]
+
+[[package]]
 name = "rtnetlink"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3238,6 +3327,15 @@ name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
+
+[[package]]
+name = "spin_sleep"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "368a978649eaf70006b082e79c832bd72556ac1393eaf564d686e919dca2347f"
+dependencies = [
+ "windows-sys 0.52.0",
+]
 
 [[package]]
 name = "spki"

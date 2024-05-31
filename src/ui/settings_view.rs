@@ -51,7 +51,7 @@ mod imp {
 
             self.simulate_crash_button
                 .connect_clicked(clone!(@weak obj => move |_| {
-                    obj.emit_by_name::<()>("crash-simulated", &[]);
+                    obj.emit_by_name::<()>("crash-simulate-requested", &[]);
                 }));
 
             let viewport = self.map.viewport().unwrap();
@@ -109,7 +109,7 @@ mod imp {
 
             SIGNALS.get_or_init(|| {
                 vec![
-                    Signal::builder("crash-simulated").build(),
+                    Signal::builder("crash-simulate-requested").build(),
                     Signal::builder("location-override-requested")
                         .param_types([Location::static_type()])
                         .build(),
@@ -138,12 +138,12 @@ impl SettingsView {
         glib::Object::new()
     }
 
-    pub fn connect_crash_simulated<F>(&self, f: F) -> glib::SignalHandlerId
+    pub fn connect_crash_simulate_requested<F>(&self, f: F) -> glib::SignalHandlerId
     where
         F: Fn(&Self) + 'static,
     {
         self.connect_closure(
-            "crash-simulated",
+            "crash-simulate-requested",
             false,
             closure_local!(|obj: &Self| f(obj)),
         )

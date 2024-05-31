@@ -6,6 +6,7 @@ use crate::{
     call::{Call, CallState},
     client::{AlertType, Client},
     colors,
+    crash_detector::CrashDetector,
     gps::FixMode,
     location::Location,
     peer::Peer,
@@ -59,6 +60,8 @@ mod imp {
         pub(super) stt: Stt,
         pub(super) stt_segments: RefCell<String>,
         pub(super) stt_is_accepting_segments: Cell<bool>,
+
+        pub(super) crash_detector: CrashDetector,
     }
 
     #[glib::object_subclass]
@@ -211,11 +214,9 @@ mod imp {
                 }));
 
             self.settings_view
-                .connect_crash_simulated(clone!(@weak obj => move |_| {
-                    // TODO do this as well upon detection of crash from accelerometer
-
+                .connect_crash_simulate_requested(clone!(@weak obj => move |_| {
                     let imp = obj.imp();
-                    imp.page_stack.set_visible_child(&*imp.crashed_page);
+                    imp.crash_detector.simulate_crash();
                 }));
             self.settings_view.connect_location_override_requested(
                 clone!(@weak obj => move |_, location| {
@@ -316,6 +317,13 @@ mod imp {
                 }));
 
             self.client.set(client.clone()).unwrap();
+
+            self.crash_detector
+                .connect_crash_detected(clone!(@weak obj => move |_| {
+                    let imp = obj.imp();
+
+                    imp.page_stack.set_visible_child(&*imp.crashed_page);
+                }));
 
             let gps = Application::get().gps();
             gps.connect_fix_mode_notify(clone!(@weak obj => move |_| {

@@ -6,6 +6,7 @@ mod call;
 mod client;
 mod colors;
 mod config;
+mod crash_detector;
 mod gps;
 mod input_stream;
 mod location;
