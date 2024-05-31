@@ -1,13 +1,11 @@
 use adw::{prelude::*, subclass::prelude::*};
-use gtk::{
-    gdk,
-    glib::{self, clone},
-};
+use gtk::glib::{self, clone};
 
 use crate::{
     application::Application,
     call::{Call, CallState},
     client::{AlertType, Client},
+    colors,
     gps::FixMode,
     location::Location,
     peer::Peer,
@@ -90,18 +88,16 @@ mod imp {
                     AlertType::Sos => (
                         format!("{} is in a life-threatening situation", peer.name()),
                         10,
-                        gdk::RGBA::new(0.88, 0.11, 0.14, 1.0), // Red 3
+                        colors::RED_3,
                     ),
                     AlertType::Hazard => (
                         format!("{} is in a hazardous situation", peer.name()),
                         5,
-                        gdk::RGBA::new(0.96, 0.76, 0.07, 1.0), // Yellow 3
+                        colors::YELLOW_4,
                     ),
-                    AlertType::Yielding => (
-                        format!("{} is yielding", peer.name()),
-                        3,
-                        gdk::RGBA::new(0.21, 0.52, 0.89, 1.0), // Blue 3
-                    ),
+                    AlertType::Yielding => {
+                        (format!("{} is yielding", peer.name()), 3, colors::BLUE_3)
+                    }
                 };
 
                 tts::speak(&text);

@@ -4,6 +4,7 @@ mod application;
 mod audio_device;
 mod call;
 mod client;
+mod colors;
 mod config;
 mod gps;
 mod input_stream;
