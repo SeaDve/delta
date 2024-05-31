@@ -216,6 +216,18 @@ impl Client {
         self.notify_active_call();
     }
 
+    async fn publish_properties(&self) {
+        let imp = self.imp();
+
+        let location = imp.location.borrow().clone();
+
+        self.publish(PublishData::PropertyChanged(vec![
+            Property::Name(config::name()),
+            Property::Location(location),
+        ]))
+        .await;
+    }
+
     async fn publish(&self, data: PublishData) {
         tracing::debug!("Publishing data: {:?}", data);
 
@@ -349,6 +361,8 @@ impl Client {
                     swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                     self.peer_list().insert(Peer::new(peer_id));
                 }
+
+                self.publish_properties().await;
             }
             SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
                 for (peer_id, _multiaddr) in list {
@@ -526,13 +540,7 @@ impl Client {
             SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
                 ..
             })) => {
-                let location = imp.location.borrow().clone();
-
-                self.publish(PublishData::PropertyChanged(vec![
-                    Property::Name(config::name()),
-                    Property::Location(location),
-                ]))
-                .await;
+                self.publish_properties().await;
 
                 imp.has_peer_subscribed.set(true);
             }
