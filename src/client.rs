@@ -526,6 +526,8 @@ impl Client {
             SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Subscribed {
                 ..
             })) => {
+                // We sometimes detect peer subscription to topic first before they discover and
+                // add us to their peer list. So add a bit of delay before publishing our properties.
                 glib::timeout_future(Duration::from_millis(200)).await;
 
                 let location = imp.location.borrow().clone();
