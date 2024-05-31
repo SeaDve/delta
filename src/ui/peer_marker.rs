@@ -149,13 +149,7 @@ mod imp {
                     .unwrap_or(gdk::RGBA::BLACK)
                     .with_alpha(0.4 * (1.0 - value as f32)),
             );
-            cr.arc(
-                obj.width() as f64 / 2.0,
-                obj.height() as f64 / 2.0,
-                radius,
-                0.0,
-                TAU,
-            );
+            cr.arc(width as f64 / 2.0, height as f64 / 2.0, radius, 0.0, TAU);
             cr.fill().unwrap();
 
             self.parent_snapshot(snapshot);
