@@ -96,6 +96,10 @@ impl Gps {
         glib::Object::new()
     }
 
+    pub fn override_location(&self, location: Option<Location>) {
+        self.set_location(location);
+    }
+
     fn init(&self) -> Result<()> {
         ensure_gpsd()?;
 
