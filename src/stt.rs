@@ -39,7 +39,7 @@ mod imp {
 
             let obj = self.obj();
 
-            if config::is_tts_enabled() {
+            if config::is_stt_enabled() {
                 if let Err(err) = obj.init() {
                     tracing::error!("Failed to initialize STT: {:?}", err);
                 }
