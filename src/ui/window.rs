@@ -217,6 +217,12 @@ mod imp {
                     let imp = obj.imp();
                     imp.page_stack.set_visible_child(&*imp.crashed_page);
                 }));
+            self.settings_view.connect_location_override_requested(
+                clone!(@weak obj => move |_, location| {
+                    let gps = Application::get().gps();
+                    gps.override_location(Some(location.clone()));
+                }),
+            );
 
             self.call_page
                 .connect_incoming_accepted(clone!(@weak client => move |_| {
