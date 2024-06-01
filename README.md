@@ -4,10 +4,10 @@
 
 ## Voice Commands
 
-| General Commands                  | Description   |
-| --------------------------------- | ------------- |
-| `call [peer name]`                | Call a peer.  |
-| `alert [sos / hazard / yielding]` | Alert a peer. |
+| General Commands                  | Description      |
+| --------------------------------- | ---------------- |
+| `call [peer name]`                | Call a peer.     |
+| `alert [sos / hazard / yielding]` | Alert all peers. |
 
 | Active Call Commands | Description            |
 | -------------------- | ---------------------- |
