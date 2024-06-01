@@ -72,7 +72,7 @@ mod imp {
                     tracing::error!("Failed to initialize GPS: {:?}", err);
                 }
             } else {
-                tracing::info!("GPS is disabled, using config location data");
+                tracing::debug!("GPS is disabled, using config location data");
                 obj.set_location(config::location());
             }
         }
