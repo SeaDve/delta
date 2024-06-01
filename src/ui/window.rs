@@ -245,11 +245,9 @@ mod imp {
                 }));
             self.call_page
                 .connect_ongoing_ended(clone!(@weak client => move |_| {
-                    glib::spawn_future_local(async move {
-                        if let Err(err) = client.call_ongoing_end() {
-                            tracing::error!("Failed to end ongoing call: {:?}", err);
-                        }
-                    });
+                    if let Err(err) = client.call_ongoing_end() {
+                        tracing::error!("Failed to end ongoing call: {:?}", err);
+                    }
                 }));
 
             self.listening_overlay
@@ -413,9 +411,111 @@ impl Window {
     }
 
     fn handle_voice_command(&self, command: &str) {
-        // TODO: Implement voice commands
+        let imp = self.imp();
 
         tracing::debug!("Voice command: {}", command);
+
+        let client = imp.client.get().unwrap();
+
+        let mut iter = command.split_whitespace();
+        while let Some(word) = iter.next() {
+            if client.active_call().is_some() {
+                match word {
+                    "accept" => {
+                        tts::speak("Accepting call");
+
+                        client.call_incoming_accept();
+
+                        break;
+                    }
+                    "decline" => {
+                        tts::speak("Declining call");
+
+                        client.call_incoming_decline();
+
+                        break;
+                    }
+                    "cancel" => {
+                        tts::speak("Cancelling call");
+
+                        glib::spawn_future_local(clone!(@weak client => async move {
+                            if let Err(err) = client.call_outgoing_cancel().await {
+                                tracing::error!("Failed to cancel outgoing call: {:?}", err);
+                            }
+                        }));
+
+                        break;
+                    }
+                    "end" => {
+                        tts::speak("Ending call");
+
+                        if let Err(err) = client.call_ongoing_end() {
+                            tracing::error!("Failed to end ongoing call: {:?}", err);
+                        }
+
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+
+            match word {
+                "call" if client.active_call().is_none() => {
+                    let Some(raw_peer_name) = iter.next() else {
+                        break;
+                    };
+
+                    let peer = client.peer_list().iter::<Peer>().find_map(|peer| {
+                        let peer = peer.unwrap();
+
+                        raw_peer_name
+                            .trim()
+                            .eq_ignore_ascii_case(peer.name().trim())
+                            .then_some(peer)
+                    });
+
+                    if let Some(peer) = peer {
+                        tts::speak(format!("Calling {}", peer.name()));
+
+                        glib::spawn_future_local(clone!(@weak client => async move {
+                            if let Err(err) = client.call_request(*peer.id()).await {
+                                tracing::error!("Failed to request call: {:?}", err);
+                            }
+                        }));
+                    } else {
+                        tts::speak(format!("Peer {} not found", raw_peer_name));
+                    }
+
+                    break;
+                }
+                "alert" => {
+                    let Some(raw_alert_type_str) = iter.next() else {
+                        break;
+                    };
+
+                    let alert_type_str = raw_alert_type_str.trim().to_lowercase();
+                    let alert_type = match alert_type_str.as_str() {
+                        "sos" => Some(AlertType::Sos),
+                        "hazard" => Some(AlertType::Hazard),
+                        "yielding" => Some(AlertType::Yielding),
+                        _ => None,
+                    };
+
+                    if let Some(alert_type) = alert_type {
+                        tts::speak(format!("Publishing {} alert", alert_type_str));
+
+                        glib::spawn_future_local(clone!(@weak client => async move {
+                            client.publish_alert(alert_type).await;
+                        }));
+                    } else {
+                        tts::speak("Invalid alert type");
+                    }
+
+                    break;
+                }
+                _ => {}
+            }
+        }
     }
 
     fn update_gps_status_icon(&self) {

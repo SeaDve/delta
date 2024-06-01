@@ -2,6 +2,20 @@
 
 **De**centralized **L**and **T**ransportation **A**ssistant
 
+## Voice Commands
+
+| General Commands                  | Description   |
+| --------------------------------- | ------------- |
+| `call [peer name]`                | Call a peer.  |
+| `alert [sos / hazard / yielding]` | Alert a peer. |
+
+| Active Call Commands | Description            |
+| -------------------- | ---------------------- |
+| `accept`             | Accept incoming call.  |
+| `decline`            | Decline incoming call. |
+| `cancel`             | Cancel outgoing call.  |
+| `end`                | End ongoing call.      |
+
 ## Building and Running
 
 1. Set up a toolbox container.
