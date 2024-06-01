@@ -29,3 +29,9 @@ cd whisper.cpp
    - `STT=1 LOCATION=15.162450,120.558289 NAME=ABC-123 ./run`
    - `LOCATION=15.525960,120.459808 NAME=IJK-456 ./run`
    - `LOCATION=13.111430,123.363503 NAME=XYZ-789 ./run`
+
+## Syncing code to the Pi
+
+```sh
+rsync --filter=':- .gitignore' --exclude \".*/\" -aP ./ $REMOTE_DIR
+```
