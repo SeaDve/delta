@@ -41,7 +41,7 @@ mod imp {
             let obj = self.obj();
 
             if let Err(err) = obj.init() {
-                tracing::debug!("Failed to initialize: {:?}", err);
+                tracing::error!("Failed to initialize accelerometer: {:?}", err);
             }
         }
 

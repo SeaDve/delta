@@ -2,8 +2,10 @@ use std::cell::RefCell;
 
 use anyhow::{anyhow, Error, Result};
 use gtk::{
-    gio::{self, prelude::*},
+    gio,
     glib::{self, translate::TryFromGlib},
+    prelude::*,
+    subclass::prelude::*,
 };
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -39,56 +41,59 @@ struct Data {
     allowed_peers: AllowedPeers,
 }
 
-pub struct Settings {
-    data: RefCell<Data>,
-    etag: RefCell<Option<glib::GString>>,
-}
+mod imp {
+    use super::*;
 
-impl Default for Settings {
-    fn default() -> Self {
-        match Self::load() {
-            Ok(settings) => settings,
-            Err(err) => {
-                tracing::error!("Failed to load settings, using default: {:?}", err);
+    #[derive(Default, glib::Properties)]
+    #[properties(wrapper_type = super::Settings)]
+    pub struct Settings {
+        #[property(name = "allowed-peers", get, set, member = allowed_peers, type = AllowedPeers, builder(AllowedPeers::default()))]
+        pub(super) data: RefCell<Data>,
 
-                Self {
-                    data: RefCell::new(Data::default()),
-                    etag: RefCell::new(None),
-                }
+        pub(super) etag: RefCell<Option<glib::GString>>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for Settings {
+        const NAME: &'static str = "DeltaSettings";
+        type Type = super::Settings;
+    }
+
+    #[glib::derived_properties]
+    impl ObjectImpl for Settings {
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            let obj = self.obj();
+
+            if let Err(err) = obj.load() {
+                tracing::error!("Failed to load settings: {:?}", err);
+            }
+        }
+
+        fn dispose(&self) {
+            let obj = self.obj();
+
+            if let Err(err) = obj.save() {
+                tracing::error!("Failed to save settings on dipose: {:?}", err);
             }
         }
     }
 }
 
-impl Drop for Settings {
-    fn drop(&mut self) {
-        if let Err(err) = self.save() {
-            tracing::error!("Failed to save settings on drop: {:?}", err);
-        }
-    }
+glib::wrapper! {
+    pub struct Settings(ObjectSubclass<imp::Settings>);
 }
 
 impl Settings {
-    fn load() -> Result<Self> {
-        let (data, etag) = match SETTINGS_FILE.load_contents(gio::Cancellable::NONE) {
-            Ok((bytes, etag)) => (serde_json::from_slice::<Data>(&bytes)?, etag),
-            Err(err) => {
-                if err.matches(gio::IOErrorEnum::NotFound) {
-                    (Data::default(), None)
-                } else {
-                    return Err(err.into());
-                }
-            }
-        };
-
-        Ok(Self {
-            data: RefCell::new(data),
-            etag: RefCell::new(etag),
-        })
+    pub fn new() -> Self {
+        glib::Object::new()
     }
 
     pub fn save(&self) -> Result<()> {
-        let bytes = serde_json::to_vec(&*self.data.borrow())?;
+        let imp = self.imp();
+
+        let bytes = serde_json::to_vec(&*imp.data.borrow())?;
 
         if let Err(err) = SETTINGS_FILE
             .parent()
@@ -102,21 +107,39 @@ impl Settings {
 
         let etag = SETTINGS_FILE.replace_contents(
             &bytes,
-            self.etag.borrow().as_deref(),
+            imp.etag.borrow().as_deref(),
             false,
             gio::FileCreateFlags::REPLACE_DESTINATION,
             gio::Cancellable::NONE,
         )?;
-        self.etag.replace(etag);
+        imp.etag.replace(etag);
 
         Ok(())
     }
 
-    pub fn set_allowed_peers(&self, peers: AllowedPeers) {
-        self.data.borrow_mut().allowed_peers = peers;
-    }
+    fn load(&self) -> Result<()> {
+        let imp = self.imp();
 
-    pub fn allowed_peers(&self) -> AllowedPeers {
-        self.data.borrow().allowed_peers
+        let (data, etag) = match SETTINGS_FILE.load_contents(gio::Cancellable::NONE) {
+            Ok((bytes, etag)) => (serde_json::from_slice::<Data>(&bytes)?, etag),
+            Err(err) => {
+                if err.matches(gio::IOErrorEnum::NotFound) {
+                    (Data::default(), None)
+                } else {
+                    return Err(err.into());
+                }
+            }
+        };
+
+        imp.data.replace(data);
+        imp.etag.replace(etag);
+
+        Ok(())
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self::new()
     }
 }

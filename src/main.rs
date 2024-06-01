@@ -9,6 +9,7 @@ mod config;
 mod crash_detector;
 mod gps;
 mod input_stream;
+mod led;
 mod location;
 mod output_stream;
 mod peer;

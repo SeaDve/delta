@@ -1,9 +1,20 @@
 use adw::{prelude::*, subclass::prelude::*};
-use gtk::{gio, glib};
+use anyhow::Result;
+use gtk::{
+    gio,
+    glib::{self, clone},
+};
 
-use crate::{gps::Gps, settings::Settings, ui::Window, APP_ID};
+use crate::{
+    gps::Gps,
+    led::{Color, Led},
+    settings::{AllowedPeers, Settings},
+    ui::Window,
+    APP_ID,
+};
 
 mod imp {
+    use once_cell::unsync::OnceCell;
 
     use super::*;
 
@@ -11,6 +22,7 @@ mod imp {
     pub struct Application {
         pub(super) gps: Gps,
         pub(super) settings: Settings,
+        pub(super) led: OnceCell<Led>,
     }
 
     #[glib::object_subclass]
@@ -44,6 +56,13 @@ mod imp {
 
             obj.setup_actions();
             obj.setup_accels();
+
+            self.settings
+                .connect_allowed_peers_notify(clone!(@weak obj => move |_| {
+                    obj.update_led_color();
+                }));
+
+            obj.update_led_color();
         }
 
         fn shutdown(&self) {
@@ -94,6 +113,23 @@ impl Application {
 
     pub fn settings(&self) -> &Settings {
         &self.imp().settings
+    }
+
+    pub fn led(&self) -> Result<&Led> {
+        self.imp().led.get_or_try_init(Led::new)
+    }
+
+    fn update_led_color(&self) {
+        match self.led() {
+            Ok(led) => {
+                led.set_color(match self.settings().allowed_peers() {
+                    AllowedPeers::Everyone => Some(Color::Green),
+                    AllowedPeers::Whitelist => Some(Color::Blue),
+                    AllowedPeers::None => None,
+                });
+            }
+            Err(err) => tracing::error!("Failed to get LED: {:?}", err),
+        }
     }
 
     fn setup_actions(&self) {

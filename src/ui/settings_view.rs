@@ -21,6 +21,8 @@ mod imp {
     #[template(file = "settings_view.ui")]
     pub struct SettingsView {
         #[template_child]
+        pub(super) page: TemplateChild<adw::PreferencesPage>, // Unused
+        #[template_child]
         pub(super) allowed_peers_row: TemplateChild<adw::ComboRow>,
         #[template_child]
         pub(super) allowed_peers_model: TemplateChild<adw::EnumListModel>,
@@ -118,13 +120,8 @@ mod imp {
                     let settings = app.settings();
 
                     if let Some(ref item) = row.selected_item() {
-                        settings.set_allowed_peers(
-                            item.downcast_ref::<adw::EnumListItem>()
-                                .unwrap()
-                                .value()
-                                .try_into()
-                                .unwrap(),
-                        );
+                        let value = item.downcast_ref::<adw::EnumListItem>().unwrap().value();
+                        settings.set_allowed_peers(AllowedPeers::try_from(value).unwrap());
                     } else {
                         tracing::warn!("Allowed peers row doesn't have a selected item");
                         settings.set_allowed_peers(AllowedPeers::default());
