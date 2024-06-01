@@ -468,10 +468,7 @@ impl Window {
                     let peer = client.peer_list().iter::<Peer>().find_map(|peer| {
                         let peer = peer.unwrap();
 
-                        raw_peer_name
-                            .trim()
-                            .eq_ignore_ascii_case(peer.name().trim())
-                            .then_some(peer)
+                        (raw_peer_name == peer.name()).then_some(peer)
                     });
 
                     if let Some(peer) = peer {
@@ -489,12 +486,11 @@ impl Window {
                     break;
                 }
                 "alert" => {
-                    let Some(raw_alert_type_str) = iter.next() else {
+                    let Some(alert_type_str) = iter.next() else {
                         break;
                     };
 
-                    let alert_type_str = raw_alert_type_str.trim().to_lowercase();
-                    let alert_type = match alert_type_str.as_str() {
+                    let alert_type = match alert_type_str {
                         "sos" => Some(AlertType::Sos),
                         "hazard" => Some(AlertType::Hazard),
                         "yielding" => Some(AlertType::Yielding),
