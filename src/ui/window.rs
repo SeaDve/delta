@@ -461,14 +461,14 @@ impl Window {
 
             match word {
                 "call" if client.active_call().is_none() => {
-                    let Some(raw_peer_name) = iter.next() else {
+                    let Some(peer_name) = iter.next() else {
                         break;
                     };
 
                     let peer = client.peer_list().iter::<Peer>().find_map(|peer| {
                         let peer = peer.unwrap();
 
-                        (raw_peer_name == peer.name()).then_some(peer)
+                        (peer_name == peer.name()).then_some(peer)
                     });
 
                     if let Some(peer) = peer {
@@ -480,7 +480,7 @@ impl Window {
                             }
                         }));
                     } else {
-                        tts::speak(format!("Peer {} not found", raw_peer_name));
+                        tts::speak(format!("Peer {} not found", peer_name));
                     }
 
                     break;
