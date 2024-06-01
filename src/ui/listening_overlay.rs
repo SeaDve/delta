@@ -12,8 +12,8 @@ mod imp {
     use super::*;
 
     #[derive(Default, gtk::CompositeTemplate)]
-    #[template(file = "listening_page.ui")]
-    pub struct ListeningPage {
+    #[template(file = "listening_overlay.ui")]
+    pub struct ListeningOverlay {
         #[template_child]
         pub(super) status_page: TemplateChild<adw::StatusPage>, // Unused
         #[template_child]
@@ -23,9 +23,9 @@ mod imp {
     }
 
     #[glib::object_subclass]
-    impl ObjectSubclass for ListeningPage {
-        const NAME: &'static str = "DeltaListeningPage";
-        type Type = super::ListeningPage;
+    impl ObjectSubclass for ListeningOverlay {
+        const NAME: &'static str = "DeltaListeningOverlay";
+        type Type = super::ListeningOverlay;
         type ParentType = gtk::Widget;
 
         fn class_init(klass: &mut Self::Class) {
@@ -37,7 +37,7 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for ListeningPage {
+    impl ObjectImpl for ListeningOverlay {
         fn constructed(&self) {
             self.parent_constructed();
 
@@ -60,15 +60,15 @@ mod imp {
         }
     }
 
-    impl WidgetImpl for ListeningPage {}
+    impl WidgetImpl for ListeningOverlay {}
 }
 
 glib::wrapper! {
-    pub struct ListeningPage(ObjectSubclass<imp::ListeningPage>)
+    pub struct ListeningOverlay(ObjectSubclass<imp::ListeningOverlay>)
         @extends gtk::Widget;
 }
 
-impl ListeningPage {
+impl ListeningOverlay {
     pub fn new() -> Self {
         glib::Object::new()
     }

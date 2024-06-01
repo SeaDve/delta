@@ -13,7 +13,7 @@ use crate::{
     stt::Stt,
     tts,
     ui::{
-        call_page::CallPage, crashed_page::CrashedPage, listening_page::ListeningPage,
+        call_page::CallPage, crashed_page::CrashedPage, listening_overlay::ListeningOverlay,
         map_view::MapView, peer_row::PeerRow, settings_view::SettingsView,
     },
 };
@@ -51,9 +51,11 @@ mod imp {
         #[template_child]
         pub(super) call_page: TemplateChild<CallPage>,
         #[template_child]
-        pub(super) listening_page: TemplateChild<ListeningPage>,
-        #[template_child]
         pub(super) crashed_page: TemplateChild<CrashedPage>,
+        #[template_child]
+        pub(super) listening_overlay_revealer: TemplateChild<gtk::Revealer>,
+        #[template_child]
+        pub(super) listening_overlay: TemplateChild<ListeningOverlay>,
 
         pub(super) client: OnceCell<Client>,
 
@@ -250,7 +252,7 @@ mod imp {
                     });
                 }));
 
-            self.listening_page
+            self.listening_overlay
                 .connect_cancelled(clone!(@weak obj => move |_| {
                     obj.reset_stt_segments();
                 }));
@@ -334,6 +336,13 @@ mod imp {
             }));
             obj.update_gps_status_icon();
             obj.update_location();
+
+            self.listening_overlay_revealer
+                .connect_child_revealed_notify(clone!(@weak obj => move |revealer| {
+                    if !revealer.reveals_child() && !revealer.is_child_revealed() {
+                        revealer.set_visible(false);
+                    }
+                }));
         }
     }
 
@@ -361,8 +370,10 @@ impl Window {
         imp.stt_segments.borrow_mut().clear();
         imp.stt_is_accepting_segments.set(false);
 
-        imp.listening_page.set_command("");
-        imp.page_stack.set_visible_child(&*imp.main_page);
+        imp.listening_overlay.set_command("");
+
+        imp.listening_overlay_revealer.set_visible(true);
+        imp.listening_overlay_revealer.set_reveal_child(false);
     }
 
     fn handle_stt_segment(&self, segment: &str) {
@@ -386,7 +397,7 @@ impl Window {
                 .borrow_mut()
                 .push_str(words.join(" ").as_str());
 
-            imp.listening_page
+            imp.listening_overlay
                 .set_command(imp.stt_segments.borrow().as_str());
         }
 
@@ -396,7 +407,8 @@ impl Window {
                 .push_str(words[(position + 1)..].join(" ").as_str());
             imp.stt_is_accepting_segments.set(true);
 
-            imp.page_stack.set_visible_child(&*imp.listening_page);
+            imp.listening_overlay_revealer.set_visible(true);
+            imp.listening_overlay_revealer.set_reveal_child(true);
         }
     }
 
