@@ -1,7 +1,7 @@
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::{gio, glib};
 
-use crate::{gps::Gps, ui::Window, APP_ID};
+use crate::{gps::Gps, settings::Settings, ui::Window, APP_ID};
 
 mod imp {
 
@@ -10,6 +10,7 @@ mod imp {
     #[derive(Default)]
     pub struct Application {
         pub(super) gps: Gps,
+        pub(super) settings: Settings,
     }
 
     #[glib::object_subclass]
@@ -43,6 +44,14 @@ mod imp {
 
             obj.setup_actions();
             obj.setup_accels();
+        }
+
+        fn shutdown(&self) {
+            if let Err(err) = self.settings.save() {
+                tracing::error!("Failed to save settings on shutdown: {:?}", err);
+            }
+
+            self.parent_shutdown();
         }
     }
 
@@ -81,6 +90,10 @@ impl Application {
 
     pub fn gps(&self) -> Gps {
         self.imp().gps.clone()
+    }
+
+    pub fn settings(&self) -> &Settings {
+        &self.imp().settings
     }
 
     fn setup_actions(&self) {

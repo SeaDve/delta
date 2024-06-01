@@ -1,12 +1,12 @@
+use adw::prelude::*;
 use gtk::{
     gdk,
-    glib::{self, clone, closure_local},
-    prelude::*,
+    glib::{self, clone, closure, closure_local},
     subclass::prelude::*,
 };
 use shumate::prelude::*;
 
-use crate::{location::Location, Application};
+use crate::{location::Location, settings::AllowedPeers, Application};
 
 const DEFAULT_MAP_ZOOM_LEVEL: f64 = 16.0;
 
@@ -20,6 +20,10 @@ mod imp {
     #[derive(Default, gtk::CompositeTemplate)]
     #[template(file = "settings_view.ui")]
     pub struct SettingsView {
+        #[template_child]
+        pub(super) allowed_peers_row: TemplateChild<adw::ComboRow>,
+        #[template_child]
+        pub(super) allowed_peers_model: TemplateChild<adw::EnumListModel>,
         #[template_child]
         pub(super) simulate_crash_button: TemplateChild<gtk::Button>,
         #[template_child]
@@ -35,6 +39,8 @@ mod imp {
         type ParentType = gtk::Widget;
 
         fn class_init(klass: &mut Self::Class) {
+            AllowedPeers::ensure_type();
+
             klass.bind_template();
         }
 
@@ -96,6 +102,35 @@ mod imp {
                 );
             }));
             self.map.add_controller(gesture_click);
+
+            self.allowed_peers_row.set_selected(
+                self.allowed_peers_model
+                    .find_position(Application::get().settings().allowed_peers() as i32),
+            );
+            self.allowed_peers_row
+                .set_expression(Some(&gtk::ClosureExpression::new::<glib::GString>(
+                    &[] as &[gtk::Expression],
+                    closure!(|list_item: adw::EnumListItem| list_item.name()),
+                )));
+            self.allowed_peers_row.connect_selected_notify(
+                clone!(@weak self as obj => move |row| {
+                    let app = Application::get();
+                    let settings = app.settings();
+
+                    if let Some(ref item) = row.selected_item() {
+                        settings.set_allowed_peers(
+                            item.downcast_ref::<adw::EnumListItem>()
+                                .unwrap()
+                                .value()
+                                .try_into()
+                                .unwrap(),
+                        );
+                    } else {
+                        tracing::warn!("Allowed peers row doesn't have a selected item");
+                        settings.set_allowed_peers(AllowedPeers::default());
+                    }
+                }),
+            );
 
             obj.update_marker_location()
         }

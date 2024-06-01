@@ -8,6 +8,22 @@
       <object class="AdwPreferencesPage">
         <child>
           <object class="AdwPreferencesGroup">
+            <property name="title">Privacy</property>
+            <child>
+              <object class="AdwComboRow" id="allowed_peers_row">
+                <property name="title">Allowed Peers</property>
+                <property name="subtitle">Only receive calls and alerts from these peers</property>
+                <property name="model">
+                  <object class="AdwEnumListModel" id="allowed_peers_model">
+                    <property name="enum-type">DeltaAllowedPeers</property>
+                  </object>
+                </property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="AdwPreferencesGroup">
             <property name="title">Others</property>
             <child>
               <object class="AdwExpanderRow">
@@ -15,7 +31,7 @@
                 <child>
                   <object class="AdwActionRow">
                     <property name="title">Simulate Crash</property>
-                    <property name="subtitle">Simulate a crash to test the crash detection feature.</property>
+                    <property name="subtitle">Simulate a crash to test the crash detection feature</property>
                     <child>
                       <object class="GtkButton" id="simulate_crash_button">
                         <property name="valign">center</property>

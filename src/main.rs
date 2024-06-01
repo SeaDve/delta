@@ -13,6 +13,7 @@ mod location;
 mod output_stream;
 mod peer;
 mod peer_list;
+mod settings;
 mod stt;
 mod tts;
 mod ui;
