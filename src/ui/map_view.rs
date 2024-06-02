@@ -8,7 +8,12 @@ use gtk::{
 };
 use shumate::prelude::*;
 
-use crate::{location::Location, peer::Peer, peer_list::PeerList, ui::peer_marker::PeerMarker};
+use crate::{
+    location::Location,
+    peer::Peer,
+    peer_list::PeerList,
+    ui::{alert_marker::AlertMarker, peer_marker::PeerMarker},
+};
 
 const DEFAULT_ZOOM_LEVEL: f64 = 20.0;
 const GO_TO_DURATION: Duration = Duration::from_secs(1);
@@ -39,7 +44,7 @@ mod imp {
 
         pub(super) marker_layer: OnceCell<shumate::MarkerLayer>,
         pub(super) our_marker: OnceCell<shumate::Marker>,
-        pub(super) peer_markers: RefCell<Vec<(Peer, PeerMarker)>>,
+        pub(super) peer_markers: RefCell<Vec<(Peer, PeerMarker, AlertMarker)>>,
     }
 
     #[glib::object_subclass]
@@ -161,17 +166,22 @@ impl MapView {
                         .downcast::<Peer>()
                         .unwrap();
 
-                    let marker = PeerMarker::new();
-                    marker.set_peer(Some(peer.clone()));
+                    let peer_marker = PeerMarker::new();
+                    peer_marker.set_peer(Some(peer.clone()));
 
-                    marker.connect_called(clone!(@weak obj => move |marker| {
+                    peer_marker.connect_called(clone!(@weak obj => move |marker| {
                         let peer = marker.peer().unwrap();
                         obj.emit_by_name::<()>("called", &[&peer]);
                     }));
 
-                    imp.marker_layer.get().unwrap().add_marker(&marker);
+                    let alert_marker = AlertMarker::new();
+                    alert_marker.set_peer(Some(peer.clone()));
 
-                    (peer, marker)
+                    let marker_layer = imp.marker_layer.get().unwrap();
+                    marker_layer.add_marker(&peer_marker);
+                    marker_layer.add_marker(&alert_marker);
+
+                    (peer, peer_marker, alert_marker)
                 });
                 let removed = imp
                     .peer_markers
@@ -182,8 +192,10 @@ impl MapView {
                     )
                     .collect::<Vec<_>>();
 
-                for (_, marker) in removed {
-                    imp.marker_layer.get().unwrap().remove_marker(&marker);
+                for (_, peer_marker, alert_marker) in removed {
+                    let marker_layer = imp.marker_layer.get().unwrap();
+                    marker_layer.remove_marker(&peer_marker);
+                    marker_layer.remove_marker(&alert_marker);
                 }
             }),
         );
@@ -227,8 +239,10 @@ impl MapView {
     pub fn play_alert_animation(&self, peer: &Peer, repeat_count: u32, color: gdk::RGBA) {
         let imp = self.imp();
 
-        if let Some((_, marker)) = imp.peer_markers.borrow().iter().find(|(p, _)| p == peer) {
-            marker.play_alert_animation(repeat_count, color);
+        if let Some((_, _, alert_marker)) =
+            imp.peer_markers.borrow().iter().find(|(p, _, _)| p == peer)
+        {
+            alert_marker.play_animation(repeat_count, color);
         } else {
             tracing::warn!("Failed to play alert animation: No marker found for peer");
         }

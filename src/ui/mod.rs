@@ -1,3 +1,4 @@
+mod alert_marker;
 mod call_page;
 mod crashed_page;
 mod listening_overlay;
