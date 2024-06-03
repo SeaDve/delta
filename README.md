@@ -4,6 +4,8 @@
 
 ## Voice Commands
 
+Say `delta` to activate the voice assistant, then say any of the following commands.
+
 | General Commands                  | Description      |
 | --------------------------------- | ---------------- |
 | `call [peer name]`                | Call a peer.     |
