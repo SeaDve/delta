@@ -73,7 +73,7 @@ impl Led {
             source_id.remove();
         }
 
-        let mut repeat_count = repeat_count * 2;
+        let mut count = repeat_count * 2;
         let inner = &self.0;
 
         let source_id = glib::timeout_add_local_full(
@@ -82,15 +82,15 @@ impl Led {
             clone!(@weak inner => @default-panic, move || {
                 let mut inner_mut = inner.borrow_mut();
 
-                if repeat_count % 2 == 0 {
+                if count % 2 == 0 {
                     inner_mut.set_color(Some(color));
                 } else {
                     inner_mut.set_color(None);
                 }
 
-                repeat_count -= 1;
+                count -= 1;
 
-                if repeat_count == 0 {
+                if count == 0 {
                     inner_mut.set_color(None);
                     inner_mut.blink_source_id = None;
                     return glib::ControlFlow::Break;
