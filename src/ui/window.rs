@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib::{self, clone};
 
@@ -8,6 +10,7 @@ use crate::{
     colors,
     crash_detector::CrashDetector,
     gps::FixMode,
+    led::Color,
     location::Location,
     peer::Peer,
     stt::Stt,
@@ -17,6 +20,8 @@ use crate::{
         map_view::MapView, peer_row::PeerRow, settings_view::SettingsView,
     },
 };
+
+const ALERT_LED_BLINK_INTERVAL: Duration = Duration::from_millis(500);
 
 mod imp {
     use std::cell::{Cell, OnceCell, RefCell};
@@ -94,20 +99,16 @@ mod imp {
             client.connect_alert_received(clone!(@weak obj => move |_, peer, alert_type| {
                 let imp = obj.imp();
 
-                let (text, alert_repeat_count, alert_color) = match alert_type {
+                let (text, alert_color) = match alert_type {
                     AlertType::Sos => (
                         format!("{} is in a life-threatening situation", peer.name()),
-                        10,
                         colors::RED_3,
                     ),
                     AlertType::Hazard => (
                         format!("{} is in a hazardous situation", peer.name()),
-                        5,
                         colors::YELLOW_4,
                     ),
-                    AlertType::Yielding => {
-                        (format!("{} is yielding", peer.name()), 3, colors::BLUE_3)
-                    }
+                    AlertType::Yielding => (format!("{} is yielding", peer.name()), colors::BLUE_3),
                 };
 
                 tts::speak(&text);
@@ -118,7 +119,7 @@ mod imp {
                     .is_some_and(|child| &child == imp.map_view.upcast_ref::<gtk::Widget>())
                 {
                     imp.map_view
-                        .play_alert_animation(peer, alert_repeat_count, alert_color);
+                        .play_alert_animation(peer, alert_type.blink_count(), alert_color);
                 }
 
                 let toast = adw::Toast::builder()
@@ -134,7 +135,8 @@ mod imp {
 
                     imp.view_stack.set_visible_child(&*imp.map_view);
 
-                    imp.map_view.play_alert_animation(&peer, alert_repeat_count, alert_color);
+                    imp.map_view
+                        .play_alert_animation(&peer, alert_type.blink_count(), alert_color);
                 }));
 
                 let binding = peer
@@ -197,22 +199,16 @@ mod imp {
                 }));
 
             self.sos_button
-                .connect_clicked(clone!(@weak client => move |_| {
-                    glib::spawn_future_local(async move {
-                         client.publish_alert(AlertType::Sos).await;
-                    });
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    obj.publish_alert(AlertType::Sos);
                 }));
             self.hazard_button
-                .connect_clicked(clone!(@weak client => move |_| {
-                    glib::spawn_future_local(async move {
-                        client.publish_alert(AlertType::Hazard).await;
-                    });
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    obj.publish_alert(AlertType::Hazard);
                 }));
             self.yielding_button
-                .connect_clicked(clone!(@weak client => move |_| {
-                    glib::spawn_future_local(async move {
-                        client.publish_alert(AlertType::Yielding).await;
-                    });
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    obj.publish_alert(AlertType::Yielding);
                 }));
 
             self.settings_view
@@ -257,14 +253,10 @@ mod imp {
 
             self.crashed_page.connect_send_alert_requested(
                 clone!(@weak obj, @weak client => move |_| {
-                    // TODO Send text message to emergency contacts
+                    let imp = obj.imp();
+                    imp.page_stack.set_visible_child(&*imp.main_page);
 
-                    glib::spawn_future_local(async move {
-                        client.publish_alert(AlertType::Sos).await;
-
-                        let imp = obj.imp();
-                        imp.page_stack.set_visible_child(&*imp.main_page);
-                    });
+                    obj.publish_alert(AlertType::Sos);
                 }),
             );
             self.crashed_page
@@ -360,6 +352,29 @@ impl Window {
         glib::Object::builder()
             .property("application", application)
             .build()
+    }
+
+    fn publish_alert(&self, alert_type: AlertType) {
+        let imp = self.imp();
+        let client = imp.client.get().unwrap();
+
+        glib::spawn_future_local(clone!(@weak client => async move {
+            client.publish_alert(alert_type).await;
+        }));
+
+        match Application::get().alert_led() {
+            Ok(alert_led) => {
+                let color = match alert_type {
+                    AlertType::Sos => Color::Red,
+                    AlertType::Hazard => Color::Yellow,
+                    AlertType::Yielding => Color::Blue,
+                };
+                alert_led.blink(color, alert_type.blink_count(), ALERT_LED_BLINK_INTERVAL);
+            }
+            Err(err) => {
+                tracing::error!("Failed to get alert LED: {:?}", err);
+            }
+        }
     }
 
     fn reset_stt_segments(&self) {
@@ -500,9 +515,7 @@ impl Window {
                     if let Some(alert_type) = alert_type {
                         tts::speak(format!("Publishing {} alert", alert_type_str));
 
-                        glib::spawn_future_local(clone!(@weak client => async move {
-                            client.publish_alert(alert_type).await;
-                        }));
+                        self.publish_alert(alert_type);
                     } else {
                         tts::speak("Invalid alert type");
                     }

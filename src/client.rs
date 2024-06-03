@@ -37,6 +37,16 @@ pub enum AlertType {
     Yielding,
 }
 
+impl AlertType {
+    pub fn blink_count(self) -> u32 {
+        match self {
+            AlertType::Sos => 10,
+            AlertType::Hazard => 5,
+            AlertType::Yielding => 3,
+        }
+    }
+}
+
 mod imp {
     use std::{
         cell::{Cell, OnceCell, RefCell},

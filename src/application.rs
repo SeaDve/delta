@@ -13,6 +13,14 @@ use crate::{
     APP_ID,
 };
 
+const ALERT_LED_RED_PIN: u8 = 5;
+const ALERT_LED_GREEN_PIN: u8 = 6;
+const ALERT_LED_BLUE_PIN: u8 = 26;
+
+const ALLOWED_PEERS_LED_RED_PIN: u8 = 17;
+const ALLOWED_PEERS_LED_GREEN_PIN: u8 = 27;
+const ALLOWED_PEERS_LED_BLUE_PIN: u8 = 22;
+
 mod imp {
     use once_cell::unsync::OnceCell;
 
@@ -22,7 +30,9 @@ mod imp {
     pub struct Application {
         pub(super) gps: Gps,
         pub(super) settings: Settings,
-        pub(super) led: OnceCell<Led>,
+
+        pub(super) allowed_peers_led: OnceCell<Led>,
+        pub(super) alert_led: OnceCell<Led>,
     }
 
     #[glib::object_subclass]
@@ -59,10 +69,10 @@ mod imp {
 
             self.settings
                 .connect_allowed_peers_notify(clone!(@weak obj => move |_| {
-                    obj.update_led_color();
+                    obj.update_allowed_peers_led_color();
                 }));
 
-            obj.update_led_color();
+            obj.update_allowed_peers_led_color();
         }
 
         fn shutdown(&self) {
@@ -115,12 +125,22 @@ impl Application {
         &self.imp().settings
     }
 
-    pub fn led(&self) -> Result<&Led> {
-        self.imp().led.get_or_try_init(Led::new)
+    pub fn alert_led(&self) -> Result<&Led> {
+        self.imp().alert_led.get_or_try_init(|| {
+            Led::new(ALERT_LED_RED_PIN, ALERT_LED_GREEN_PIN, ALERT_LED_BLUE_PIN)
+        })
     }
 
-    fn update_led_color(&self) {
-        match self.led() {
+    fn update_allowed_peers_led_color(&self) {
+        let imp = self.imp();
+
+        match imp.allowed_peers_led.get_or_try_init(|| {
+            Led::new(
+                ALLOWED_PEERS_LED_RED_PIN,
+                ALLOWED_PEERS_LED_GREEN_PIN,
+                ALLOWED_PEERS_LED_BLUE_PIN,
+            )
+        }) {
             Ok(led) => {
                 led.set_color(match self.settings().allowed_peers() {
                     AllowedPeers::Everyone => Some(Color::Green),
