@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/io/github/seadve/Delta/">
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/ambulance-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/bus-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/call-start-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/call-stop-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/cycling-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/dialog-warning-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/driving-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/globe-symbolic.svg</file>

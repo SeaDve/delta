@@ -30,6 +30,8 @@ mod imp {
         #[template_child]
         pub(super) vbox: TemplateChild<gtk::Box>, // Unused
         #[template_child]
+        pub(super) image: TemplateChild<gtk::Image>,
+        #[template_child]
         pub(super) caller_name_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) caller_distance_label: TemplateChild<gtk::Label>,
@@ -127,6 +129,12 @@ mod imp {
                     obj.update_caller_distance_label();
                 }),
             );
+            peer_signals.connect_notify_local(
+                Some("icon-name"),
+                clone!(@weak obj => move |_, _| {
+                    obj.update_image_icon_name();
+                }),
+            );
             self.peer_signals.set(peer_signals.clone()).unwrap();
 
             self.call_bindings
@@ -143,6 +151,7 @@ mod imp {
             obj.update_caller_name_label();
             obj.update_caller_distance_label();
             obj.update_duration_label();
+            obj.update_image_icon_name();
         }
 
         fn dispose(&self) {
@@ -182,6 +191,7 @@ mod imp {
             obj.update_caller_name_label();
             obj.update_caller_distance_label();
             obj.update_duration_label();
+            obj.update_image_icon_name();
 
             obj.notify_call();
         }
@@ -285,6 +295,13 @@ impl CallPage {
 
         let duration_secs = self.call().map(|call| call.duration_secs()).unwrap_or(0);
         imp.duration_label.set_label(&format_time(duration_secs));
+    }
+
+    fn update_image_icon_name(&self) {
+        let imp = self.imp();
+
+        let icon_name = self.call().map(|call| call.peer().icon_name());
+        imp.image.set_icon_name(icon_name.as_deref());
     }
 }
 

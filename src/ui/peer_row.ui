@@ -2,9 +2,8 @@
 <interface>
   <template class="DeltaPeerRow" parent="AdwActionRow">
     <child type="prefix">
-      <object class="GtkImage">
+      <object class="GtkImage" id="image">
         <property name="valign">center</property>
-        <property name="icon-name">driving-symbolic</property>
         <style>
           <class name="peer-row-prefix"/>
         </style>

@@ -18,6 +18,8 @@ mod imp {
     #[template(file = "peer_marker.ui")]
     pub struct PeerMarker {
         #[template_child]
+        pub(super) image: TemplateChild<gtk::Image>,
+        #[template_child]
         pub(super) name_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) distance_label: TemplateChild<gtk::Label>,
@@ -65,6 +67,12 @@ mod imp {
                     obj.update_distance_label();
                 }),
             );
+            peer_signals.connect_notify_local(
+                Some("icon-name"),
+                clone!(@weak obj => move |_, _| {
+                    obj.update_image_icon_name();
+                }),
+            );
             self.peer_signals.set(peer_signals).unwrap();
 
             let gesture_click = gtk::GestureClick::new();
@@ -93,6 +101,7 @@ mod imp {
             obj.update_name_label();
             obj.update_distance_label();
             obj.update_location();
+            obj.update_image_icon_name();
         }
 
         fn dispose(&self) {
@@ -137,6 +146,7 @@ impl PeerMarker {
         self.update_name_label();
         self.update_distance_label();
         self.update_location();
+        self.update_image_icon_name();
     }
 
     pub fn peer(&self) -> Option<Peer> {
@@ -182,5 +192,12 @@ impl PeerMarker {
         if let Some(location) = location {
             self.set_location(location.latitude, location.longitude);
         }
+    }
+
+    fn update_image_icon_name(&self) {
+        let imp = self.imp();
+
+        let icon_name = imp.peer.borrow().as_ref().map(|peer| peer.icon_name());
+        imp.image.set_icon_name(icon_name.as_deref());
     }
 }

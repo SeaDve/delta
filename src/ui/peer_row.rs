@@ -18,6 +18,8 @@ mod imp {
         pub(super) peer: OnceCell<Peer>,
 
         #[template_child]
+        pub(super) image: TemplateChild<gtk::Image>,
+        #[template_child]
         pub(super) call_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub(super) view_on_map_button: TemplateChild<gtk::Button>,
@@ -56,6 +58,9 @@ mod imp {
 
             let peer = obj.peer();
             peer.bind_property("name", &*obj, "title")
+                .sync_create()
+                .build();
+            peer.bind_property("icon-name", &*self.image, "icon-name")
                 .sync_create()
                 .build();
             peer.connect_location_notify(clone!(@weak obj => move |_| {

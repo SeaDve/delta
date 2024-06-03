@@ -14,11 +14,10 @@
         <property name="orientation">vertical</property>
         <property name="spacing">12</property>
         <child>
-          <object class="GtkImage">
+          <object class="GtkImage" id="image">
             <property name="valign">center</property>
             <property name="halign">center</property>
             <property name="pixel-size">48</property>
-            <property name="icon-name">driving-symbolic</property>
             <style>
               <class name="call-page-icon"/>
             </style>

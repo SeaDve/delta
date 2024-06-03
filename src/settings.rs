@@ -36,9 +36,19 @@ impl TryFrom<i32> for AllowedPeers {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Data {
     allowed_peers: AllowedPeers,
+    icon_name: String,
+}
+
+impl Default for Data {
+    fn default() -> Self {
+        Self {
+            allowed_peers: AllowedPeers::default(),
+            icon_name: "driving-symbolic".into(),
+        }
+    }
 }
 
 mod imp {
@@ -48,6 +58,7 @@ mod imp {
     #[properties(wrapper_type = super::Settings)]
     pub struct Settings {
         #[property(name = "allowed-peers", get, set, member = allowed_peers, type = AllowedPeers, builder(AllowedPeers::default()))]
+        #[property(name = "icon-name", get, set, member = icon_name, type = String)]
         pub(super) data: RefCell<Data>,
 
         pub(super) etag: RefCell<Option<glib::GString>>,

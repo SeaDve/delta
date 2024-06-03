@@ -9,6 +9,12 @@ use shumate::prelude::*;
 use crate::{location::Location, settings::AllowedPeers, Application};
 
 const DEFAULT_MAP_ZOOM_LEVEL: f64 = 16.0;
+const ICON_LIST: &[&str] = &[
+    "driving-symbolic",
+    "bus-symbolic",
+    "ambulance-symbolic",
+    "cycling-symbolic",
+];
 
 mod imp {
     use std::{cell::OnceCell, sync::OnceLock};
@@ -22,6 +28,8 @@ mod imp {
     pub struct SettingsView {
         #[template_child]
         pub(super) page: TemplateChild<adw::PreferencesPage>, // Unused
+        #[template_child]
+        pub(super) icon_flow_box: TemplateChild<gtk::FlowBox>,
         #[template_child]
         pub(super) allowed_peers_row: TemplateChild<adw::ComboRow>,
         #[template_child]
@@ -57,6 +65,52 @@ mod imp {
 
             let obj = self.obj();
 
+            let app = Application::get();
+            let settings = app.settings();
+
+            let icon_model = gtk::StringList::new(ICON_LIST);
+            self.icon_flow_box.bind_model(Some(&icon_model), |item| {
+                let string_obj = item.downcast_ref::<gtk::StringObject>().unwrap();
+
+                let image = gtk::Image::builder()
+                    .halign(gtk::Align::Center)
+                    .icon_name(string_obj.string())
+                    .build();
+                image.add_css_class("peer-image");
+
+                image.upcast()
+            });
+
+            let icon_name_index = ICON_LIST
+                .iter()
+                .position(|icon_name| *icon_name == settings.icon_name())
+                .unwrap();
+            self.icon_flow_box.select_child(
+                &self
+                    .icon_flow_box
+                    .child_at_index(icon_name_index as i32)
+                    .unwrap(),
+            );
+            self.icon_flow_box.connect_selected_children_changed(
+                clone!(@weak self as obj => move |flow_box| {
+                    let selected_children = flow_box.selected_children();
+                    debug_assert_eq!(selected_children.len(), 1);
+
+                    let selected_child = selected_children.first().unwrap();
+                    let icon_name = selected_child
+                        .child()
+                        .unwrap()
+                        .downcast_ref::<gtk::Image>()
+                        .unwrap()
+                        .icon_name()
+                        .unwrap();
+
+                    let app = Application::get();
+                    let settings = app.settings();
+                    settings.set_icon_name(icon_name);
+                }),
+            );
+
             self.simulate_crash_button
                 .connect_clicked(clone!(@weak obj => move |_| {
                     obj.emit_by_name::<()>("crash-simulate-requested", &[]);
@@ -81,7 +135,7 @@ mod imp {
             marker.set_child(Some(&image));
             self.marker.set(marker).unwrap();
 
-            let gps = Application::get().gps();
+            let gps = app.gps();
             gps.connect_location_notify(clone!(@weak obj => move |_| {
                 obj.update_marker_location();
             }));
@@ -107,7 +161,7 @@ mod imp {
 
             self.allowed_peers_row.set_selected(
                 self.allowed_peers_model
-                    .find_position(Application::get().settings().allowed_peers() as i32),
+                    .find_position(settings.allowed_peers() as i32),
             );
             self.allowed_peers_row
                 .set_expression(Some(&gtk::ClosureExpression::new::<glib::GString>(

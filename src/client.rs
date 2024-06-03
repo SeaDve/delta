@@ -24,6 +24,7 @@ use crate::{
     output_stream::OutputStream,
     peer::Peer,
     peer_list::PeerList,
+    Application,
 };
 
 const AUDIO_STREAM_PROTOCOL: StreamProtocol = StreamProtocol::new("/audio");
@@ -80,6 +81,19 @@ mod imp {
                 if let Err(err) = obj.init().await {
                     tracing::error!("Failed to initialize client: {:?}", err);
                 }
+            }));
+
+            let app = Application::get();
+            let settings = app.settings();
+
+            settings.connect_icon_name_notify(clone!(@weak obj => move |settings| {
+                let icon_name = settings.icon_name();
+                glib::spawn_future_local(async move {
+                    obj.publish(PublishData::PropertyChanged(vec![Property::IconName(
+                        icon_name,
+                    )]))
+                    .await;
+                });
             }));
         }
 
@@ -385,6 +399,9 @@ impl Client {
                                 Property::Location(location) => {
                                     peer.set_location(location);
                                 }
+                                Property::IconName(icon_name) => {
+                                    peer.set_icon_name(icon_name);
+                                }
                             }
                         }
                     }
@@ -532,9 +549,13 @@ impl Client {
 
                 let location = imp.location.borrow().clone();
 
+                let app = Application::get();
+                let settings = app.settings();
+
                 self.publish(PublishData::PropertyChanged(vec![
                     Property::Name(config::name()),
                     Property::Location(location),
+                    Property::IconName(settings.icon_name()),
                 ]))
                 .await;
 
@@ -570,6 +591,7 @@ enum CallIncomingResponse {
 enum Property {
     Name(String),
     Location(Option<Location>),
+    IconName(String),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -9,9 +9,8 @@
           <object class="GtkBox">
             <property name="orientation">vertical</property>
             <child>
-              <object class="GtkImage">
+              <object class="GtkImage" id="image">
                 <property name="halign">center</property>
-                <property name="icon-name">driving-symbolic</property>
                 <style>
                   <class name="peer-marker"/>
                 </style>

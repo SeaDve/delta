@@ -17,6 +17,8 @@ mod imp {
         pub(super) name: RefCell<String>,
         #[property(get, set, nullable)]
         pub(super) location: RefCell<Option<Location>>,
+        #[property(get, set)]
+        pub(super) icon_name: RefCell<String>,
     }
 
     #[glib::object_subclass]

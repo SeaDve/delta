@@ -3,6 +3,8 @@
   <template class="DeltaWindow" parent="AdwApplicationWindow">
     <property name="width-request">480</property>
     <property name="height-request">320</property>
+    <property name="default-width">480</property>
+    <property name="default-height">320</property>
     <property name="content">
       <object class="GtkOverlay">
         <property name="child">
