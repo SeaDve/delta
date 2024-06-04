@@ -324,7 +324,7 @@ impl Client {
         loop {
             futures_util::select! {
                 command = command_rx.recv().fuse() => {
-                    if let Err(err) = self.handle_command(&mut swarm, &topic, command?).await {
+                    if let Err(err) = self.handle_command(&mut swarm, &topic, command?) {
                         tracing::error!("Failed to handle command: {:?}", err);
                     }
                 }
@@ -338,7 +338,7 @@ impl Client {
     }
 
     // Handle outgoing commands
-    async fn handle_command(
+    fn handle_command(
         &self,
         swarm: &mut Swarm<Behaviour>,
         topic: &gossipsub::IdentTopic,
