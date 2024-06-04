@@ -92,23 +92,30 @@ mod imp {
 
             let app = Application::get();
 
+            let gps = app.gps();
+            gps.connect_location_notify(clone!(@weak obj => move |gps| {
+                let location = gps.location();
+                glib::spawn_future_local(async move {
+                    obj.publish(PublishData::PropertyChanged(vec![Property::Location(
+                        location,
+                    )]))
+                    .await;
+                });
+            }));
+            gps.connect_speed_notify(clone!(@weak obj => move |gps| {
+                let speed = gps.speed();
+                glib::spawn_future_local(async move {
+                    obj.publish(PublishData::PropertyChanged(vec![Property::Speed(speed)]))
+                        .await;
+                });
+            }));
+
             app.settings()
                 .connect_icon_name_notify(clone!(@weak obj => move |settings| {
                     let icon_name = settings.icon_name();
                     glib::spawn_future_local(async move {
                         obj.publish(PublishData::PropertyChanged(vec![Property::IconName(
                             icon_name,
-                        )]))
-                        .await;
-                    });
-                }));
-
-            app.gps()
-                .connect_location_notify(clone!(@weak obj => move |gps| {
-                    let location = gps.location();
-                    glib::spawn_future_local(async move {
-                        obj.publish(PublishData::PropertyChanged(vec![Property::Location(
-                            location,
                         )]))
                         .await;
                     });
@@ -402,6 +409,9 @@ impl Client {
                                 Property::Location(location) => {
                                     peer.set_location(location);
                                 }
+                                Property::Speed(speed) => {
+                                    peer.set_speed(speed);
+                                }
                                 Property::IconName(icon_name) => {
                                     peer.set_icon_name(icon_name);
                                 }
@@ -551,12 +561,17 @@ impl Client {
                 glib::timeout_future(Duration::from_millis(200)).await;
 
                 let app = Application::get();
-                let location = app.gps().location();
+
+                let gps = app.gps();
+                let location = gps.location();
+                let speed = gps.speed();
+
                 let icon_name = app.settings().icon_name();
 
                 self.publish(PublishData::PropertyChanged(vec![
                     Property::Name(config::name()),
                     Property::Location(location),
+                    Property::Speed(speed),
                     Property::IconName(icon_name),
                 ]))
                 .await;
@@ -591,6 +606,7 @@ enum CallIncomingResponse {
 enum Property {
     Name(String),
     Location(Option<Location>),
+    Speed(f64),
     IconName(String),
 }
 

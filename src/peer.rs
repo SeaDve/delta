@@ -4,7 +4,7 @@ use libp2p::PeerId;
 use crate::location::Location;
 
 mod imp {
-    use std::cell::{OnceCell, RefCell};
+    use std::cell::{Cell, OnceCell, RefCell};
 
     use super::*;
 
@@ -17,6 +17,8 @@ mod imp {
         pub(super) name: RefCell<String>,
         #[property(get, set, nullable)]
         pub(super) location: RefCell<Option<Location>>,
+        #[property(get, set)]
+        pub(super) speed: Cell<f64>,
         #[property(get, set)]
         pub(super) icon_name: RefCell<String>,
     }

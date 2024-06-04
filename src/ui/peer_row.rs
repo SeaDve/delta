@@ -67,6 +67,9 @@ mod imp {
                 obj.update_subtitle();
                 obj.update_view_on_map_button_sensitivity();
             }));
+            peer.connect_speed_notify(clone!(@weak obj => move |_| {
+                obj.update_subtitle();
+            }));
 
             Application::get()
                 .gps()
@@ -121,16 +124,21 @@ impl PeerRow {
     }
 
     fn update_subtitle(&self) {
-        let subtitle = self
-            .peer()
-            .location()
-            .and_then(|location| {
-                Application::get()
-                    .gps()
-                    .location()
-                    .map(|l| format!("{:.2} m away", l.distance(&location)))
-            })
-            .unwrap_or_default();
+        let peer = self.peer();
+
+        let distance_str = peer.location().and_then(|location| {
+            Application::get()
+                .gps()
+                .location()
+                .map(|l| format!("{:.2} m away", l.distance(&location)))
+        });
+        let speed_str = format!("{:.2} m/s", peer.speed());
+
+        let subtitle = [distance_str, Some(speed_str)]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join(" • ");
         self.set_subtitle(&subtitle);
     }
 

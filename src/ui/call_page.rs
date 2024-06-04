@@ -36,6 +36,8 @@ mod imp {
         #[template_child]
         pub(super) caller_distance_label: TemplateChild<gtk::Label>,
         #[template_child]
+        pub(super) caller_speed_label: TemplateChild<gtk::Label>,
+        #[template_child]
         pub(super) stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub(super) incoming_page: TemplateChild<gtk::Box>,
@@ -130,6 +132,12 @@ mod imp {
                 }),
             );
             peer_signals.connect_notify_local(
+                Some("speed"),
+                clone!(@weak obj => move |_, _| {
+                    obj.update_caller_speed_label();
+                }),
+            );
+            peer_signals.connect_notify_local(
                 Some("icon-name"),
                 clone!(@weak obj => move |_, _| {
                     obj.update_image_icon_name();
@@ -150,6 +158,7 @@ mod imp {
             obj.update_stack();
             obj.update_caller_name_label();
             obj.update_caller_distance_label();
+            obj.update_caller_speed_label();
             obj.update_duration_label();
             obj.update_image_icon_name();
         }
@@ -190,6 +199,7 @@ mod imp {
             obj.update_stack();
             obj.update_caller_name_label();
             obj.update_caller_distance_label();
+            obj.update_caller_speed_label();
             obj.update_duration_label();
             obj.update_image_icon_name();
 
@@ -266,9 +276,19 @@ impl CallPage {
                     .gps()
                     .location()
                     .map(|l| format!("{:.2} m away", l.distance(&location)))
-            })
-            .unwrap_or_default();
-        imp.caller_distance_label.set_label(&distance_str);
+            });
+        imp.caller_distance_label
+            .set_label(&distance_str.unwrap_or_default());
+    }
+
+    fn update_caller_speed_label(&self) {
+        let imp = self.imp();
+
+        let speed_str = self
+            .call()
+            .map(|call| format!("{:.2} m/s", call.peer().speed()));
+        imp.caller_speed_label
+            .set_label(&speed_str.unwrap_or_default());
     }
 
     fn update_stack(&self) {

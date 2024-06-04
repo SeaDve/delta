@@ -41,6 +41,14 @@
                 </style>
               </object>
             </child>
+            <child>
+              <object class="GtkLabel" id="caller_speed_label">
+                <style>
+                  <class name="dim-label"/>
+                  <class name="caption"/>
+                </style>
+              </object>
+            </child>
           </object>
         </child>
       </object>

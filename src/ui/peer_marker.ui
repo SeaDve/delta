@@ -30,6 +30,13 @@
                 </style>
               </object>
             </child>
+            <child>
+              <object class="GtkLabel" id="speed_label">
+                <style>
+                  <class name="caption"/>
+                </style>
+              </object>
+            </child>
           </object>
         </child>
         <child>

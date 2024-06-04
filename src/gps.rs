@@ -34,6 +34,7 @@ struct RawData {
     latitude: Option<f64>,
     #[serde(rename = "lon")]
     longitude: Option<f64>,
+    speed: Option<f64>,
 }
 
 mod imp {
@@ -48,6 +49,9 @@ mod imp {
         pub(super) fix_mode: Cell<FixMode>,
         #[property(get)]
         pub(super) location: RefCell<Option<Location>>,
+        /// Speed in meters per second
+        #[property(get)]
+        pub(super) speed: Cell<f64>,
 
         pub(super) child: RefCell<Option<Child>>,
     }
@@ -161,6 +165,10 @@ impl Gps {
             }
         }
 
+        if let Some(speed) = data.speed {
+            self.set_speed(speed);
+        }
+
         Ok(())
     }
 
@@ -184,6 +192,17 @@ impl Gps {
 
         imp.location.replace(location);
         self.notify_location();
+    }
+
+    fn set_speed(&self, speed: f64) {
+        let imp = self.imp();
+
+        if speed == self.speed() {
+            return;
+        }
+
+        imp.speed.set(speed);
+        self.notify_speed();
     }
 }
 

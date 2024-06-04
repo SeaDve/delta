@@ -24,6 +24,8 @@ mod imp {
         #[template_child]
         pub(super) distance_label: TemplateChild<gtk::Label>,
         #[template_child]
+        pub(super) speed_label: TemplateChild<gtk::Label>,
+        #[template_child]
         pub(super) popover: TemplateChild<gtk::Popover>,
         #[template_child]
         pub(super) call_button: TemplateChild<gtk::Button>,
@@ -68,6 +70,12 @@ mod imp {
                 }),
             );
             peer_signals.connect_notify_local(
+                Some("speed"),
+                clone!(@weak obj => move |_, _| {
+                    obj.update_speed_label();
+                }),
+            );
+            peer_signals.connect_notify_local(
                 Some("icon-name"),
                 clone!(@weak obj => move |_, _| {
                     obj.update_image_icon_name();
@@ -100,6 +108,7 @@ mod imp {
 
             obj.update_name_label();
             obj.update_distance_label();
+            obj.update_speed_label();
             obj.update_location();
             obj.update_image_icon_name();
         }
@@ -145,6 +154,7 @@ impl PeerMarker {
 
         self.update_name_label();
         self.update_distance_label();
+        self.update_speed_label();
         self.update_location();
         self.update_image_icon_name();
     }
@@ -181,6 +191,17 @@ impl PeerMarker {
             });
         imp.distance_label
             .set_label(&distance_str.unwrap_or_default());
+    }
+
+    fn update_speed_label(&self) {
+        let imp = self.imp();
+
+        let speed_str = imp
+            .peer
+            .borrow()
+            .as_ref()
+            .map(|peer| format!("{:.2} m/s", peer.speed()));
+        imp.speed_label.set_label(&speed_str.unwrap_or_default());
     }
 
     fn update_location(&self) {
