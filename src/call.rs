@@ -90,8 +90,9 @@ mod imp {
 
                     self.ongoing_time.set(Some(Instant::now()));
 
-                    let source_id = glib::timeout_add_local(
+                    let source_id = glib::timeout_add_local_full(
                         DURATION_SECS_NOTIFTY_INTERVAL,
+                        glib::Priority::LOW,
                         clone!(@weak obj => @default-panic, move || {
                             obj.notify_duration_secs();
                             glib::ControlFlow::Continue
