@@ -32,7 +32,7 @@ mod imp {
     #[template(file = "map_view.ui")]
     pub struct MapView {
         #[template_child]
-        pub(super) overlay: TemplateChild<gtk::Overlay>, // Unused
+        pub(super) hbox: TemplateChild<gtk::Box>, // Unused
         #[template_child]
         pub(super) map: TemplateChild<shumate::Map>,
         #[template_child]

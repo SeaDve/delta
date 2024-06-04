@@ -5,32 +5,120 @@
       <object class="GtkBinLayout"/>
     </property>
     <child>
-      <object class="GtkOverlay" id="overlay">
+      <object class="GtkBox" id="hbox">
         <child>
-          <object class="ShumateMap" id="map">
-            <property name="hexpand">True</property>
-            <property name="vexpand">True</property>
+          <object class="GtkOverlay">
+            <child>
+              <object class="ShumateMap" id="map">
+                <property name="hexpand">True</property>
+                <property name="vexpand">True</property>
+              </object>
+            </child>
+            <child type="overlay">
+              <object class="ShumateCompass" id="compass">
+                <property name="margin-top">12</property>
+                <property name="margin-end">12</property>
+                <property name="halign">end</property>
+                <property name="valign">start</property>
+              </object>
+            </child>
+            <child type="overlay">
+              <object class="GtkButton" id="return_button">
+                <property name="margin-bottom">12</property>
+                <property name="margin-end">12</property>
+                <property name="halign">end</property>
+                <property name="valign">end</property>
+                <property name="icon-name">map-marker-symbolic</property>
+                <style>
+                  <class name="circular"/>
+                  <class name="osd"/>
+                </style>
+              </object>
+            </child>
           </object>
         </child>
-        <child type="overlay">
-          <object class="ShumateCompass" id="compass">
-            <property name="margin-top">12</property>
-            <property name="margin-end">12</property>
-            <property name="halign">end</property>
-            <property name="valign">start</property>
-          </object>
-        </child>
-        <child type="overlay">
-          <object class="GtkButton" id="return_button">
-            <property name="margin-bottom">12</property>
-            <property name="margin-end">12</property>
-            <property name="halign">end</property>
-            <property name="valign">end</property>
-            <property name="icon-name">map-marker-symbolic</property>
-            <style>
-              <class name="circular"/>
-              <class name="osd"/>
-            </style>
+        <child>
+          <object class="GtkScrolledWindow">
+            <property name="child">
+              <object class="GtkBox">
+                <property name="orientation">vertical</property>
+                <style>
+                  <class name="map-toolbar"/>
+                </style>
+                <child>
+                  <object class="GtkButton">
+                    <property name="tooltip-text">Shop</property>
+                    <property name="icon-name">shop-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton">
+                    <property name="tooltip-text">Gasoline Station</property>
+                    <property name="icon-name">fuel-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton">
+                    <property name="tooltip-text">Restroom</property>
+                    <property name="icon-name">toilets-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton">
+                    <property name="tooltip-text">Hospital</property>
+                    <property name="icon-name">hospital-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton">
+                    <property name="tooltip-text">Transport Terminal</property>
+                    <property name="icon-name">bus-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton">
+                    <property name="tooltip-text">Airport</property>
+                    <property name="icon-name">flying-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton">
+                    <property name="tooltip-text">Train</property>
+                    <property name="icon-name">train-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton">
+                    <property name="tooltip-text">Hotel</property>
+                    <property name="icon-name">bed-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </property>
           </object>
         </child>
       </object>
