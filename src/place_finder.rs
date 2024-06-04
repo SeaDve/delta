@@ -6,7 +6,7 @@ use gtk::{gio, glib};
 
 use crate::location::Location;
 
-const PBF_PATH: &str = "balanga.osm.pbf";
+const PBF_PATH: &str = "bataan.osm.pbf";
 
 #[derive(Debug, Clone, glib::Boxed)]
 #[boxed_type(name = "DeltaPlace")]
