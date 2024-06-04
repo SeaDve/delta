@@ -49,7 +49,7 @@ impl AlertType {
 
 mod imp {
     use std::{
-        cell::{Cell, OnceCell, RefCell},
+        cell::{OnceCell, RefCell},
         sync::OnceLock,
     };
 
@@ -62,9 +62,6 @@ mod imp {
     pub struct Client {
         #[property(get)]
         pub(super) active_call: RefCell<Option<Call>>,
-
-        pub(super) location: RefCell<Option<Location>>,
-        pub(super) has_peer_subscribed: Cell<bool>,
 
         pub(super) command_tx: OnceCell<async_channel::Sender<Command>>,
         pub(super) call_incoming_response_tx:
@@ -94,17 +91,28 @@ mod imp {
             }));
 
             let app = Application::get();
-            let settings = app.settings();
 
-            settings.connect_icon_name_notify(clone!(@weak obj => move |settings| {
-                let icon_name = settings.icon_name();
-                glib::spawn_future_local(async move {
-                    obj.publish(PublishData::PropertyChanged(vec![Property::IconName(
-                        icon_name,
-                    )]))
-                    .await;
-                });
-            }));
+            app.settings()
+                .connect_icon_name_notify(clone!(@weak obj => move |settings| {
+                    let icon_name = settings.icon_name();
+                    glib::spawn_future_local(async move {
+                        obj.publish(PublishData::PropertyChanged(vec![Property::IconName(
+                            icon_name,
+                        )]))
+                        .await;
+                    });
+                }));
+
+            app.gps()
+                .connect_location_notify(clone!(@weak obj => move |gps| {
+                    let location = gps.location();
+                    glib::spawn_future_local(async move {
+                        obj.publish(PublishData::PropertyChanged(vec![Property::Location(
+                            location,
+                        )]))
+                        .await;
+                    });
+                }));
         }
 
         fn signals() -> &'static [Signal] {
@@ -210,21 +218,6 @@ impl Client {
         active_call.start_end();
 
         Ok(())
-    }
-
-    pub fn set_location(&self, location: Option<Location>) {
-        let imp = self.imp();
-
-        imp.location.replace(location.clone());
-
-        if imp.has_peer_subscribed.get() {
-            glib::spawn_future_local(clone!(@weak self as obj => async move {
-                obj.publish(PublishData::PropertyChanged(vec![Property::Location(
-                    location,
-                )]))
-                .await;
-            }));
-        }
     }
 
     fn set_active_call(&self, call: Option<Call>) {
@@ -557,19 +550,16 @@ impl Client {
                 // add us to their peer list. So add a bit of delay before publishing our properties.
                 glib::timeout_future(Duration::from_millis(200)).await;
 
-                let location = imp.location.borrow().clone();
-
                 let app = Application::get();
-                let settings = app.settings();
+                let location = app.gps().location();
+                let icon_name = app.settings().icon_name();
 
                 self.publish(PublishData::PropertyChanged(vec![
                     Property::Name(config::name()),
                     Property::Location(location),
-                    Property::IconName(settings.icon_name()),
+                    Property::IconName(icon_name),
                 ]))
                 .await;
-
-                imp.has_peer_subscribed.set(true);
             }
             SwarmEvent::NewListenAddr { address, .. } => {
                 tracing::trace!("Local node is listening on {address}");

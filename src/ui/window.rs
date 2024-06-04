@@ -560,9 +560,6 @@ impl Window {
         let gps = Application::get().gps();
         let location = gps.location();
 
-        let client = imp.client.get().unwrap();
-        client.set_location(location.clone());
-
         imp.map_view.set_location(location);
     }
 }
