@@ -13,6 +13,13 @@
     color: #e01b24;
 }
 
+.place-marker {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+    border-radius: 9999px;
+    padding: 6px;
+}
+
 /* PeerMarker */
 
 .peer-marker {

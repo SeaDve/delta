@@ -2,7 +2,7 @@
 <gresources>
   <gresource prefix="/io/github/seadve/Delta/">
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/ambulance-symbolic.svg</file>
-    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/bed-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/bank-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/bus-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/call-start-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/call-stop-symbolic.svg</file>
@@ -10,19 +10,23 @@
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/dialog-warning-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/driving-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/fast-food-symbolic.svg</file>
-    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/flying-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/fuel-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/globe-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/hospital-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/map-marker-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/map-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/non-religious-cemetary-symbolic-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/parking-sign-symbolic-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/phone-oldschool-symbolic-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/police-badge-symbolic-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/rescue-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/school-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/send-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/settings-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/shop-symbolic.svg</file>
+    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/theater-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/thumbs-up-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/toilets-symbolic.svg</file>
-    <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/train-symbolic.svg</file>
     <file compressed="true">style.css</file>
   </gresource>
 </gresources>

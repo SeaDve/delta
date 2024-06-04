@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="DeltaPlaceMarker" parent="ShumateMarker">
+    <property name="child">
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkImage" id="image">
+            <property name="halign">center</property>
+            <style>
+              <class name="place-marker"/>
+            </style>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="name_label">
+            <property name="max-width-chars">30</property>
+            <property name="justify">center</property>
+            <property name="wrap">True</property>
+            <style>
+              <class name="caption-heading"/>
+            </style>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="distance_label">
+            <style>
+              <class name="caption"/>
+            </style>
+          </object>
+        </child>
+      </object>
+    </property>
+  </template>
+</interface>

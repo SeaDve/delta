@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use anyhow::{Context, Result};
 use gtk::{
     gdk,
     glib::{self, clone, closure_local},
@@ -12,7 +13,8 @@ use crate::{
     location::Location,
     peer::Peer,
     peer_list::PeerList,
-    ui::{alert_marker::AlertMarker, peer_marker::PeerMarker},
+    place_finder::{PlaceFinder, PlaceType},
+    ui::{alert_marker::AlertMarker, peer_marker::PeerMarker, place_marker::PlaceMarker},
 };
 
 const DEFAULT_ZOOM_LEVEL: f64 = 20.0;
@@ -34,6 +36,8 @@ mod imp {
         #[template_child]
         pub(super) hbox: TemplateChild<gtk::Box>, // Unused
         #[template_child]
+        pub(super) toolbar: TemplateChild<gtk::Box>,
+        #[template_child]
         pub(super) map: TemplateChild<shumate::Map>,
         #[template_child]
         pub(super) compass: TemplateChild<shumate::Compass>,
@@ -45,6 +49,9 @@ mod imp {
         pub(super) marker_layer: OnceCell<shumate::MarkerLayer>,
         pub(super) our_marker: OnceCell<shumate::Marker>,
         pub(super) peer_markers: RefCell<Vec<(Peer, PeerMarker, AlertMarker)>>,
+
+        pub(super) places_marker_layer: OnceCell<shumate::MarkerLayer>,
+        pub(super) place_finder: PlaceFinder,
     }
 
     #[glib::object_subclass]
@@ -92,6 +99,10 @@ mod imp {
 
             self.our_marker.set(marker).unwrap();
 
+            let places_marker_layer = shumate::MarkerLayer::new(&viewport);
+            self.map.add_layer(&places_marker_layer);
+            self.places_marker_layer.set(places_marker_layer).unwrap();
+
             let obj = self.obj();
 
             self.return_button
@@ -104,6 +115,22 @@ mod imp {
                         longitude: our_marker.longitude(),
                     });
                 }));
+
+            for place_type in PlaceType::all() {
+                let button = gtk::Button::builder()
+                    .tooltip_text(place_type.to_string())
+                    .icon_name(place_type.icon_name())
+                    .build();
+                self.toolbar.append(&button);
+
+                button.connect_clicked(clone!(@weak obj => move |_| {
+                    glib::spawn_future_local(async move {
+                        if let Err(err) = obj.show_places(*place_type).await {
+                            tracing::warn!("Failed to show places: {:?}", err);
+                        }
+                    });
+                }));
+            }
 
             obj.set_location(None);
         }
@@ -246,6 +273,34 @@ impl MapView {
         } else {
             tracing::warn!("Failed to play alert animation: No marker found for peer");
         }
+    }
+
+    async fn show_places(&self, place_type: PlaceType) -> Result<()> {
+        let imp = self.imp();
+
+        let places_marker_layer = imp.places_marker_layer.get().unwrap();
+        places_marker_layer.remove_all();
+
+        let places = imp.place_finder.find(place_type).await?;
+
+        for place in places {
+            let place_marker = PlaceMarker::new(place);
+            places_marker_layer.add_marker(&place_marker);
+        }
+
+        let location = self.location().context("No location set")?;
+        let nearest = places.iter().min_by(|a, b| {
+            a.location()
+                .distance(&location)
+                .partial_cmp(&b.location().distance(&location))
+                .unwrap()
+        });
+
+        if let Some(nearest) = nearest {
+            self.go_to(nearest.location().clone());
+        }
+
+        Ok(())
     }
 
     fn update_return_button_sensitivity(&self) {

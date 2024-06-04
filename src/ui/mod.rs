@@ -5,6 +5,7 @@ mod listening_overlay;
 mod map_view;
 mod peer_marker;
 mod peer_row;
+mod place_marker;
 mod settings_view;
 mod window;
 

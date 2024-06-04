@@ -15,6 +15,7 @@ mod location;
 mod output_stream;
 mod peer;
 mod peer_list;
+mod place_finder;
 mod settings;
 mod stt;
 mod tts;

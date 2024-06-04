@@ -50,13 +50,7 @@ mod imp {
 
             let obj = self.obj();
 
-            if let Some(window) = obj.windows().first() {
-                window.present();
-                return;
-            }
-
-            let window = Window::new(&obj);
-            window.present();
+            obj.window().present();
         }
 
         fn startup(&self) {
@@ -129,6 +123,11 @@ impl Application {
         self.imp().alert_led.get_or_try_init(|| {
             Led::new(ALERT_LED_RED_PIN, ALERT_LED_GREEN_PIN, ALERT_LED_BLUE_PIN)
         })
+    }
+
+    fn window(&self) -> Window {
+        self.active_window()
+            .map_or_else(|| Window::new(self), |w| w.downcast().unwrap())
     }
 
     fn update_allowed_peers_led_color(&self) {
