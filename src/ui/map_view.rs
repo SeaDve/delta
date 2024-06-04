@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use gtk::{
     gdk,
     glib::{self, clone, closure_local},
@@ -288,16 +288,17 @@ impl MapView {
             places_marker_layer.add_marker(&place_marker);
         }
 
-        let location = self.location().context("No location set")?;
-        let nearest = places.iter().min_by(|a, b| {
-            a.location()
-                .distance(&location)
-                .partial_cmp(&b.location().distance(&location))
-                .unwrap()
+        let nearest = self.location().and_then(|location| {
+            places.iter().min_by(|a, b| {
+                a.location()
+                    .distance(&location)
+                    .partial_cmp(&b.location().distance(&location))
+                    .unwrap()
+            })
         });
 
-        if let Some(nearest) = nearest {
-            self.go_to(nearest.location().clone());
+        if let Some(place) = nearest.or_else(|| places.first()) {
+            self.go_to(place.location().clone());
         }
 
         Ok(())
