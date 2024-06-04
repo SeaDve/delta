@@ -70,14 +70,15 @@ mod imp {
             let obj = self.obj();
 
             if config::is_gps_enabled() {
-                tracing::debug!("Initializing GPS");
+                tracing::debug!("GPS is enabled, initializing GPS");
 
                 if let Err(err) = obj.init() {
                     tracing::error!("Failed to initialize GPS: {:?}", err);
                 }
-            } else {
-                tracing::debug!("GPS is disabled, using config location data");
-                obj.set_location(config::location());
+            }
+
+            if let Some(location) = config::location() {
+                obj.set_location(Some(location));
             }
         }
 
