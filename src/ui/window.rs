@@ -13,6 +13,7 @@ use crate::{
     led::Color,
     location::Location,
     peer::Peer,
+    place_finder::PlaceType,
     stt::Stt,
     tts,
     ui::{
@@ -537,7 +538,32 @@ impl Window {
 
                         self.publish_alert(alert_type);
                     } else {
-                        tts::speak("Invalid alert type");
+                        tts::speak("Unknown alert type");
+                    }
+
+                    break;
+                }
+                "find" => {
+                    let Some(place_type_str) = iter.next() else {
+                        break;
+                    };
+
+                    let place_type = PlaceType::all().iter().find(|place_type| {
+                        place_type_str.eq_ignore_ascii_case(&place_type.to_string())
+                    });
+
+                    if let Some(place_type) = place_type {
+                        tts::speak(format!("Finding {}", place_type_str));
+
+                        glib::spawn_future_local(clone!(@weak self as obj => async move {
+                            let imp = obj.imp();
+                            if let Err(err) = imp.map_view.show_and_go_to_nearest(*place_type).await {
+                                tracing::warn!("Failed to show places: {:?}", err);
+                            }
+                            imp.view_stack.set_visible_child(&*imp.map_view);
+                        }));
+                    } else {
+                        tts::speak("Unknown place type");
                     }
 
                     break;

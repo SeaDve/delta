@@ -125,7 +125,7 @@ mod imp {
 
                 button.connect_clicked(clone!(@weak obj => move |_| {
                     glib::spawn_future_local(async move {
-                        if let Err(err) = obj.show_places(*place_type).await {
+                        if let Err(err) = obj.show_and_go_to_nearest(*place_type).await {
                             tracing::warn!("Failed to show places: {:?}", err);
                         }
                     });
@@ -275,7 +275,7 @@ impl MapView {
         }
     }
 
-    async fn show_places(&self, place_type: PlaceType) -> Result<()> {
+    pub async fn show_and_go_to_nearest(&self, place_type: PlaceType) -> Result<()> {
         let imp = self.imp();
 
         let places_marker_layer = imp.places_marker_layer.get().unwrap();

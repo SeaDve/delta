@@ -6,10 +6,11 @@
 
 Say `delta` to activate the voice assistant, then say any of the following commands.
 
-| General Commands                  | Description      |
-| --------------------------------- | ---------------- |
-| `call [peer name]`                | Call a peer.     |
-| `alert [sos / hazard / yielding]` | Alert all peers. |
+| General Commands                  | Description            |
+| --------------------------------- | ---------------------- |
+| `call [peer name]`                | Call a peer.           |
+| `alert [sos / hazard / yielding]` | Alert all peers.       |
+| `find [place type]`               | Find and show a place. |
 
 | Active Call Commands | Description            |
 | -------------------- | ---------------------- |
