@@ -2,6 +2,9 @@
 
 **De**centralized **L**and **T**ransportation **A**ssistant
 
+Delta is a land transportation communication system designed for safety,
+convenience, and accessibility.
+
 ## ✨ Features
 
 ### 🕊️ Decentralized Communication
@@ -39,6 +42,12 @@ Nearby places are shown on the map. Click on a place to show a QR code for more 
 ### 🎨 Customization
 
 The user can set their display icon as well as set communication preferences.
+
+## 🖊️ Planned Features
+
+### 🏢 V2I (Vehicle to Infrastructure) Communication
+
+Vehicles can communicate with infrastructure like traffic lights, road signs, and toll gates.
 
 ## 🏗️ Building and Running
 
