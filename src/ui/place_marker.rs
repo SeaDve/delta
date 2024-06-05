@@ -59,7 +59,7 @@ mod imp {
             gesture_click.connect_released(clone!(@weak obj => move |_, _, _, _| {
                 obj.emit_by_name::<()>("show-place-requested", &[]);
             }));
-            obj.add_controller(gesture_click);
+            self.image.add_controller(gesture_click);
 
             Application::get()
                 .gps()
