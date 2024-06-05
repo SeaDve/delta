@@ -35,6 +35,53 @@
               </object>
             </child>
             <child type="overlay">
+              <object class="GtkRevealer" id="place_control_revealer">
+                <property name="margin-start">12</property>
+                <property name="margin-bottom">12</property>
+                <property name="halign">start</property>
+                <property name="valign">end</property>
+                <property name="visible">False</property>
+                <property name="transition-type">crossfade</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="spacing">12</property>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="spacing">6</property>
+                        <child>
+                          <object class="GtkButton" id="prev_place_button">
+                            <property name="icon-name">go-previous-symbolic</property>
+                            <style>
+                              <class name="osd"/>
+                              <class name="circular"/>
+                            </style>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="next_place_button">
+                            <property name="icon-name">go-next-symbolic</property>
+                            <style>
+                              <class name="osd"/>
+                              <class name="circular"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="unshow_places_button">
+                        <property name="icon-name">check-plain-symbolic</property>
+                        <style>
+                          <class name="osd"/>
+                          <class name="circular"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child type="overlay">
               <object class="GtkButton" id="return_button">
                 <property name="margin-bottom">12</property>
                 <property name="margin-end">12</property>

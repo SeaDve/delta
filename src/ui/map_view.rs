@@ -13,7 +13,7 @@ use crate::{
     location::Location,
     peer::Peer,
     peer_list::PeerList,
-    place_finder::{PlaceFinder, PlaceType},
+    place_finder::{Place, PlaceFinder, PlaceType},
     ui::{alert_marker::AlertMarker, peer_marker::PeerMarker, place_marker::PlaceMarker},
 };
 
@@ -22,7 +22,7 @@ const GO_TO_DURATION: Duration = Duration::from_secs(1);
 
 mod imp {
     use std::{
-        cell::{OnceCell, RefCell},
+        cell::{Cell, OnceCell, RefCell},
         sync::OnceLock,
     };
 
@@ -42,6 +42,14 @@ mod imp {
         #[template_child]
         pub(super) compass: TemplateChild<shumate::Compass>,
         #[template_child]
+        pub(super) place_control_revealer: TemplateChild<gtk::Revealer>,
+        #[template_child]
+        pub(super) prev_place_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(super) next_place_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(super) unshow_places_button: TemplateChild<gtk::Button>,
+        #[template_child]
         pub(super) return_button: TemplateChild<gtk::Button>,
 
         pub(super) location: RefCell<Option<Location>>,
@@ -52,6 +60,9 @@ mod imp {
 
         pub(super) places_marker_layer: OnceCell<shumate::MarkerLayer>,
         pub(super) place_finder: PlaceFinder,
+
+        pub(super) shown_places: RefCell<Vec<Place>>,
+        pub(super) shown_place_index: Cell<Option<usize>>,
     }
 
     #[glib::object_subclass]
@@ -110,10 +121,29 @@ mod imp {
                     let imp = obj.imp();
 
                     let our_marker = imp.our_marker.get().unwrap();
-                    obj.go_to(Location {
+                    obj.go_to(&Location {
                         latitude: our_marker.latitude(),
                         longitude: our_marker.longitude(),
                     });
+                }));
+
+            self.place_control_revealer
+                .connect_child_revealed_notify(|revealer| {
+                    if !revealer.reveals_child() && !revealer.is_child_revealed() {
+                        revealer.set_visible(false);
+                    }
+                });
+            self.prev_place_button
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    obj.go_to_prev_place();
+                }));
+            self.next_place_button
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    obj.go_to_next_place();
+                }));
+            self.unshow_places_button
+                .connect_clicked(clone!(@weak obj => move |_| {
+                    obj.unshow_places();
                 }));
 
             for place_type in PlaceType::all() {
@@ -125,13 +155,14 @@ mod imp {
 
                 button.connect_clicked(clone!(@weak obj => move |_| {
                     glib::spawn_future_local(async move {
-                        if let Err(err) = obj.show_and_go_to_nearest(*place_type).await {
+                        if let Err(err) = obj.show_places_and_go_to_nearest(*place_type).await {
                             tracing::warn!("Failed to show places: {:?}", err);
                         }
                     });
                 }));
             }
 
+            obj.update_place_control_sensitivity();
             obj.set_location(None);
         }
 
@@ -252,7 +283,7 @@ impl MapView {
         self.imp().location.borrow().clone()
     }
 
-    pub fn go_to(&self, location: Location) {
+    pub fn go_to(&self, location: &Location) {
         let imp = self.imp();
 
         imp.map.go_to_full_with_duration(
@@ -275,11 +306,12 @@ impl MapView {
         }
     }
 
-    pub async fn show_and_go_to_nearest(&self, place_type: PlaceType) -> Result<()> {
+    pub async fn show_places_and_go_to_nearest(&self, place_type: PlaceType) -> Result<()> {
         let imp = self.imp();
 
+        self.unshow_places();
+
         let places_marker_layer = imp.places_marker_layer.get().unwrap();
-        places_marker_layer.remove_all();
 
         let places = imp.place_finder.find(place_type).await?;
 
@@ -288,20 +320,96 @@ impl MapView {
             places_marker_layer.add_marker(&place_marker);
         }
 
-        let nearest = self.location().and_then(|location| {
-            places.iter().min_by(|a, b| {
+        let mut place_vec = places.to_vec();
+
+        if let Some(location) = self.location() {
+            place_vec.sort_by(|a, b| {
                 a.location()
                     .distance(&location)
                     .partial_cmp(&b.location().distance(&location))
                     .unwrap()
-            })
-        });
-
-        if let Some(place) = nearest.or_else(|| places.first()) {
-            self.go_to(place.location().clone());
+            });
         }
 
+        if let Some(nearest_place) = place_vec.first() {
+            self.go_to(nearest_place.location());
+
+            imp.shown_place_index.set(Some(0));
+        }
+
+        imp.shown_places.replace(place_vec);
+
+        imp.place_control_revealer.set_visible(true);
+        imp.place_control_revealer.set_reveal_child(true);
+
+        self.update_place_control_sensitivity();
+
         Ok(())
+    }
+
+    fn unshow_places(&self) {
+        let imp = self.imp();
+
+        let places_marker_layer = imp.places_marker_layer.get().unwrap();
+        places_marker_layer.remove_all();
+
+        imp.shown_places.replace(Vec::new());
+        imp.shown_place_index.set(None);
+
+        imp.place_control_revealer.set_visible(true);
+        imp.place_control_revealer.set_reveal_child(false);
+
+        self.update_place_control_sensitivity();
+    }
+
+    fn go_to_prev_place(&self) {
+        let imp = self.imp();
+
+        let shown_places = imp.shown_places.borrow();
+        let shown_place_index = imp.shown_place_index.get();
+
+        if let Some(index) = shown_place_index {
+            if index > 0 {
+                let prev_place_index = index - 1;
+                let prev_place = &shown_places[prev_place_index];
+
+                self.go_to(prev_place.location());
+                imp.shown_place_index.set(Some(prev_place_index));
+            }
+        }
+
+        self.update_place_control_sensitivity();
+    }
+
+    fn go_to_next_place(&self) {
+        let imp = self.imp();
+
+        let shown_places = imp.shown_places.borrow();
+        let shown_place_index = imp.shown_place_index.get();
+
+        if let Some(index) = shown_place_index {
+            if index + 1 < shown_places.len() {
+                let next_place_index = index + 1;
+                let next_place = &shown_places[next_place_index];
+
+                self.go_to(next_place.location());
+                imp.shown_place_index.set(Some(next_place_index));
+            }
+        }
+
+        self.update_place_control_sensitivity();
+    }
+
+    fn update_place_control_sensitivity(&self) {
+        let imp = self.imp();
+
+        let shown_place_index = imp.shown_place_index.get();
+        let shown_places = imp.shown_places.borrow();
+
+        imp.prev_place_button
+            .set_sensitive(shown_place_index.is_some_and(|i| i > 0));
+        imp.next_place_button
+            .set_sensitive(shown_place_index.is_some_and(|i| i + 1 < shown_places.len()));
     }
 
     fn update_return_button_sensitivity(&self) {

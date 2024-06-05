@@ -155,7 +155,7 @@ mod imp {
                     let imp = obj.imp();
 
                     let location = peer.location().unwrap();
-                    imp.map_view.go_to(location);
+                    imp.map_view.go_to(&location);
 
                     imp.view_stack.set_visible_child(&*imp.map_view);
 
@@ -318,7 +318,7 @@ mod imp {
                         let imp = obj.imp();
 
                         let location = row.peer().location().unwrap();
-                        imp.map_view.go_to(location);
+                        imp.map_view.go_to(&location);
 
                         imp.view_stack.set_visible_child(&*imp.map_view);
                     }));
@@ -352,11 +352,11 @@ mod imp {
             obj.update_location();
 
             self.listening_overlay_revealer
-                .connect_child_revealed_notify(clone!(@weak obj => move |revealer| {
+                .connect_child_revealed_notify(move |revealer| {
                     if !revealer.reveals_child() && !revealer.is_child_revealed() {
                         revealer.set_visible(false);
                     }
-                }));
+                });
         }
     }
 
@@ -564,7 +564,7 @@ impl Window {
 
                         glib::spawn_future_local(clone!(@weak self as obj => async move {
                             let imp = obj.imp();
-                            if let Err(err) = imp.map_view.show_and_go_to_nearest(*place_type).await {
+                            if let Err(err) = imp.map_view.show_places_and_go_to_nearest(*place_type).await {
                                 tracing::warn!("Failed to show places: {:?}", err);
                             }
                             imp.view_stack.set_visible_child(&*imp.map_view);
