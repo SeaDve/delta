@@ -22,6 +22,7 @@ use crate::{
         call_page::CallPage, crashed_page::CrashedPage, listening_overlay::ListeningOverlay,
         map_view::MapView, peer_row::PeerRow, settings_view::SettingsView,
     },
+    GRESOURCE_PREFIX,
 };
 
 const ALERT_LED_BLINK_INTERVAL: Duration = Duration::from_millis(500);
@@ -621,7 +622,7 @@ fn play_quick_tone() -> Result<()> {
 
     playbin.set_property(
         "uri",
-        "resource:///io/github/seadve/Delta/digital-quick-tone.wav",
+        format!("resource://{}digital-quick-tone.wav", GRESOURCE_PREFIX),
     );
 
     playbin.set_state(gst::State::Playing)?;

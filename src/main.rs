@@ -28,6 +28,7 @@ use gtk::{gio, glib, prelude::*};
 use self::application::Application;
 
 const APP_ID: &str = "io.github.seadve.Delta";
+const GRESOURCE_PREFIX: &str = "/io/github/seadve/Delta/";
 
 fn main() -> glib::ExitCode {
     tracing_subscriber::fmt::init();
@@ -35,7 +36,7 @@ fn main() -> glib::ExitCode {
     gst::init().unwrap();
 
     let data = gvdb::gresource::GResourceBuilder::from_directory(
-        "/io/github/seadve/Delta/",
+        GRESOURCE_PREFIX,
         Path::new("data/resources/"),
         true,
         true,

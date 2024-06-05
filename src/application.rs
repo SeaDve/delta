@@ -10,7 +10,7 @@ use crate::{
     led::{Color, Led},
     settings::{AllowedPeers, Settings},
     ui::Window,
-    APP_ID,
+    APP_ID, GRESOURCE_PREFIX,
 };
 
 const ALERT_LED_RED_PIN: u8 = 5;
@@ -92,7 +92,7 @@ impl Application {
     pub fn new() -> Self {
         glib::Object::builder()
             .property("application-id", APP_ID)
-            .property("resource-base-path", "/io/github/seadve/Delta/")
+            .property("resource-base-path", GRESOURCE_PREFIX)
             .property("flags", gio::ApplicationFlags::NON_UNIQUE)
             .build()
     }
