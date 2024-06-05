@@ -36,7 +36,7 @@ mod imp {
         #[template_child]
         pub(super) hbox: TemplateChild<gtk::Box>, // Unused
         #[template_child]
-        pub(super) toolbar: TemplateChild<gtk::Box>,
+        pub(super) places_toolbar: TemplateChild<gtk::Box>,
         #[template_child]
         pub(super) map: TemplateChild<shumate::Map>,
         #[template_child]
@@ -153,7 +153,7 @@ mod imp {
                     .tooltip_text(place_type.to_string())
                     .icon_name(place_type.icon_name())
                     .build();
-                self.toolbar.append(&button);
+                self.places_toolbar.append(&button);
 
                 button.connect_clicked(clone!(@weak obj => move |_| {
                     glib::spawn_future_local(async move {

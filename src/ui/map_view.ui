@@ -9,8 +9,9 @@
         <property name="orientation">vertical</property>
         <child>
           <object class="GtkScrolledWindow">
+            <property name="vscrollbar-policy">never</property>
             <property name="child">
-              <object class="GtkBox" id="toolbar">
+              <object class="GtkBox" id="places_toolbar">
                 <style>
                   <class name="toolbar"/>
                 </style>
