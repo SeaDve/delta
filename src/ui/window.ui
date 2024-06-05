@@ -200,6 +200,9 @@
                 <child>
                   <object class="DeltaCrashedPage" id="crashed_page"/>
                 </child>
+                <child>
+                  <object class="DeltaPlacePage" id="place_page"/>
+                </child>
               </object>
             </property>
           </object>

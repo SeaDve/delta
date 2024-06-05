@@ -1,10 +1,12 @@
-use gtk::glib::{self, clone};
+use gtk::glib::{self, clone, closure_local};
 use shumate::{prelude::*, subclass::prelude::*};
 
 use crate::{place_finder::Place, Application};
 
 mod imp {
-    use std::cell::OnceCell;
+    use std::{cell::OnceCell, sync::OnceLock};
+
+    use glib::subclass::Signal;
 
     use super::*;
 
@@ -50,13 +52,14 @@ mod imp {
             let location = place.location();
             obj.set_location(location.latitude, location.longitude);
 
-            self.image
-                .set_icon_name(Some(&place.place_type().icon_name()));
-            self.name_label.set_label(
-                &place
-                    .name()
-                    .map_or_else(|| place.place_type().to_string(), |name| name.to_string()),
-            );
+            self.image.set_icon_name(Some(&place.type_().icon_name()));
+            self.name_label.set_label(&place.name());
+
+            let gesture_click = gtk::GestureClick::new();
+            gesture_click.connect_released(clone!(@weak obj => move |_, _, _, _| {
+                obj.emit_by_name::<()>("show-place-requested", &[]);
+            }));
+            obj.add_controller(gesture_click);
 
             Application::get()
                 .gps()
@@ -69,6 +72,12 @@ mod imp {
 
         fn dispose(&self) {
             self.dispose_template();
+        }
+
+        fn signals() -> &'static [Signal] {
+            static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
+
+            SIGNALS.get_or_init(|| vec![Signal::builder("show-place-requested").build()])
         }
     }
 
@@ -85,6 +94,17 @@ glib::wrapper! {
 impl PlaceMarker {
     pub fn new(place: &Place) -> Self {
         glib::Object::builder().property("place", place).build()
+    }
+
+    pub fn connect_show_place_requested<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self) + 'static,
+    {
+        self.connect_closure(
+            "show-place-requested",
+            false,
+            closure_local!(|obj: &Self| f(obj)),
+        )
     }
 
     fn update_distance_label(&self) {

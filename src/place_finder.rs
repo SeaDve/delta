@@ -11,7 +11,7 @@ const PBF_PATH: &str = "data/bataan.osm.pbf";
 #[derive(Debug, Clone, glib::Boxed)]
 #[boxed_type(name = "DeltaPlace")]
 pub struct Place {
-    place_type: PlaceType,
+    type_: PlaceType,
     location: Location,
     name: Option<String>,
 }
@@ -21,12 +21,14 @@ impl Place {
         &self.location
     }
 
-    pub fn place_type(&self) -> PlaceType {
-        self.place_type
+    pub fn type_(&self) -> PlaceType {
+        self.type_
     }
 
-    pub fn name(&self) -> Option<&str> {
-        self.name.as_deref()
+    pub fn name(&self) -> String {
+        self.name
+            .as_ref()
+            .map_or_else(|| self.type_.to_string(), |name| name.to_string())
     }
 }
 
@@ -167,7 +169,7 @@ impl PlaceFinder {
                             .entry(place_type)
                             .or_insert_with(Vec::new)
                             .push(Place {
-                                place_type,
+                                type_: place_type,
                                 location: Location {
                                     latitude: node.lat(),
                                     longitude: node.lon(),

@@ -38,6 +38,19 @@
     padding: 6px;
 }
 
+/* PlacePage */
+
+.place-page {
+    padding: 24px;
+}
+
+.place-page-icon  {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+    border-radius: 9999px;
+    padding: 24px;
+}
+
 /* SettingsView */
 
 .peer-image {

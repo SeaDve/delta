@@ -174,9 +174,14 @@ mod imp {
             static SIGNALS: OnceLock<Vec<Signal>> = OnceLock::new();
 
             SIGNALS.get_or_init(|| {
-                vec![Signal::builder("called")
-                    .param_types([Peer::static_type()])
-                    .build()]
+                vec![
+                    Signal::builder("called")
+                        .param_types([Peer::static_type()])
+                        .build(),
+                    Signal::builder("show-place-requested")
+                        .param_types([Place::static_type()])
+                        .build(),
+                ]
             })
         }
     }
@@ -209,6 +214,17 @@ impl MapView {
             "called",
             false,
             closure_local!(|obj: &Self, peer: &Peer| f(obj, peer)),
+        )
+    }
+
+    pub fn connect_show_place_requested<F>(&self, f: F) -> glib::SignalHandlerId
+    where
+        F: Fn(&Self, &Place) + 'static,
+    {
+        self.connect_closure(
+            "show-place-requested",
+            false,
+            closure_local!(move |obj: &Self, place: &Place| f(obj, place)),
         )
     }
 
@@ -317,6 +333,12 @@ impl MapView {
 
         for place in places {
             let place_marker = PlaceMarker::new(place);
+            place_marker.connect_show_place_requested(
+                clone!(@weak self as obj => move |place_marker| {
+                    let place = place_marker.place();
+                    obj.emit_by_name::<()>("show-place-requested", &[&place]);
+                }),
+            );
             places_marker_layer.add_marker(&place_marker);
         }
 

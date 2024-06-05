@@ -16,6 +16,9 @@
             </child>
             <child>
               <object class="GtkLabel" id="name_label">
+                <property name="max-width-chars">30</property>
+                <property name="wrap">True</property>
+                <property name="justify">center</property>
                 <style>
                   <class name="caption-heading"/>
                 </style>

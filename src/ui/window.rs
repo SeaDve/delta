@@ -20,7 +20,7 @@ use crate::{
     tts,
     ui::{
         call_page::CallPage, crashed_page::CrashedPage, listening_overlay::ListeningOverlay,
-        map_view::MapView, peer_row::PeerRow, settings_view::SettingsView,
+        map_view::MapView, peer_row::PeerRow, place_page::PlacePage, settings_view::SettingsView,
     },
     GRESOURCE_PREFIX,
 };
@@ -61,6 +61,8 @@ mod imp {
         pub(super) call_page: TemplateChild<CallPage>,
         #[template_child]
         pub(super) crashed_page: TemplateChild<CrashedPage>,
+        #[template_child]
+        pub(super) place_page: TemplateChild<PlacePage>,
         #[template_child]
         pub(super) listening_overlay_revealer: TemplateChild<gtk::Revealer>,
         #[template_child]
@@ -221,6 +223,13 @@ mod imp {
                         }
                     });
                 }));
+            self.map_view
+                .connect_show_place_requested(clone!(@weak obj => move |_, place| {
+                    let imp = obj.imp();
+
+                    imp.place_page.set_place(Some(place));
+                    imp.page_stack.set_visible_child(&*imp.place_page);
+                }));
 
             self.sos_button
                 .connect_clicked(clone!(@weak obj => move |_| {
@@ -288,6 +297,11 @@ mod imp {
                     let imp = obj.imp();
                     imp.page_stack.set_visible_child(&*imp.main_page);
                 }));
+
+            self.place_page.connect_done(clone!(@weak obj => move |_| {
+                let imp = obj.imp();
+                imp.page_stack.set_visible_child(&*imp.main_page);
+            }));
 
             self.map_view.bind_model(client.peer_list());
 

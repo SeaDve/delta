@@ -29,6 +29,9 @@
             <property name="spacing">6</property>
             <child>
               <object class="GtkLabel" id="caller_name_label">
+                <property name="max-width-chars">30</property>
+                <property name="wrap">True</property>
+                <property name="justify">center</property>
                 <style>
                   <class name="title-1"/>
                 </style>
@@ -57,9 +60,9 @@
       <object class="GtkStack" id="stack">
         <child>
           <object class="GtkBox" id="incoming_page">
-            <property name="orientation">vertical</property>
             <property name="hexpand">True</property>
             <property name="valign">center</property>
+            <property name="orientation">vertical</property>
             <property name="spacing">24</property>
             <child>
               <object class="GtkButton" id="accept_button">
