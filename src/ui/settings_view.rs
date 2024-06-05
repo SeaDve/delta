@@ -17,7 +17,10 @@ const ICON_LIST: &[&str] = &[
 ];
 
 mod imp {
-    use std::{cell::OnceCell, sync::OnceLock};
+    use std::{
+        cell::{Cell, OnceCell},
+        sync::OnceLock,
+    };
 
     use glib::subclass::Signal;
 
@@ -40,6 +43,8 @@ mod imp {
         pub(super) map: TemplateChild<shumate::Map>,
 
         pub(super) marker: OnceCell<shumate::Marker>,
+
+        pub(super) initial_zoom_done: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -208,8 +213,12 @@ mod imp {
         fn map(&self) {
             self.parent_map();
 
-            let viewport = self.map.viewport().unwrap();
-            viewport.set_zoom_level(DEFAULT_MAP_ZOOM_LEVEL);
+            if !self.initial_zoom_done.get() {
+                let viewport = self.map.viewport().unwrap();
+                viewport.set_zoom_level(DEFAULT_MAP_ZOOM_LEVEL);
+
+                self.initial_zoom_done.set(true);
+            }
         }
     }
 }

@@ -63,6 +63,8 @@ mod imp {
 
         pub(super) shown_places: RefCell<Vec<Place>>,
         pub(super) shown_place_index: Cell<Option<usize>>,
+
+        pub(super) initial_zoom_done: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -190,8 +192,12 @@ mod imp {
         fn map(&self) {
             self.parent_map();
 
-            let viewport = self.map.viewport().unwrap();
-            viewport.set_zoom_level(DEFAULT_ZOOM_LEVEL);
+            if !self.initial_zoom_done.get() {
+                let viewport = self.map.viewport().unwrap();
+                viewport.set_zoom_level(DEFAULT_ZOOM_LEVEL);
+
+                self.initial_zoom_done.set(true);
+            }
         }
     }
 }
