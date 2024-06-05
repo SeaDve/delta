@@ -122,7 +122,7 @@ impl PlaceType {
             PlaceType::Pharmacy => &["pharmacy"],
             PlaceType::Cinema => &["theatre", "cinema", "events_venue"],
             PlaceType::Telephone => &["telephone"],
-            PlaceType::Bank => &["bank", "atm", "money_transfer"],
+            PlaceType::Bank => &["bank", "atm", "money_transfer", "bureau_de_change"],
             PlaceType::Shop => &["marketplace"],
             PlaceType::Church => &["place_of_worship"],
             PlaceType::Fuel => &["fuel"],
