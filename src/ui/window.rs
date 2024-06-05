@@ -1,6 +1,8 @@
 use std::time::Duration;
 
 use adw::{prelude::*, subclass::prelude::*};
+use anyhow::Result;
+use gst::prelude::*;
 use gtk::glib::{self, clone};
 
 use crate::{
@@ -436,6 +438,10 @@ impl Window {
         }
 
         if let Some(position) = words.iter().position(|w| *w == "delta") {
+            if let Err(err) = play_quick_tone() {
+                tracing::error!("Failed to play quick tone: {:?}", err);
+            }
+
             imp.stt_segments
                 .borrow_mut()
                 .push_str(words[(position + 1)..].join(" ").as_str());
@@ -608,4 +614,17 @@ impl Window {
 
         imp.map_view.set_location(location);
     }
+}
+
+fn play_quick_tone() -> Result<()> {
+    let playbin = gst::ElementFactory::make("playbin").build()?;
+
+    playbin.set_property(
+        "uri",
+        "resource:///io/github/seadve/Delta/digital-quick-tone.wav",
+    );
+
+    playbin.set_state(gst::State::Playing)?;
+
+    Ok(())
 }

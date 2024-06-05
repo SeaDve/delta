@@ -28,6 +28,7 @@
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/theater-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/thumbs-up-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/toilets-symbolic.svg</file>
+    <file compressed="true">digital-quick-tone.wav</file>
     <file compressed="true">style.css</file>
   </gresource>
 </gresources>
