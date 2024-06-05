@@ -1,6 +1,11 @@
-/* CallPage */
+image.small-icon {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+    border-radius: 9999px;
+    padding: 6px;
+}
 
-.call-page-icon  {
+image.large-icon {
     background-color: @accent_bg_color;
     color: @accent_fg_color;
     border-radius: 9999px;
@@ -13,51 +18,10 @@
     color: #e01b24;
 }
 
-.place-marker {
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-    border-radius: 9999px;
-    padding: 6px;
-}
-
-/* PeerMarker */
-
-.peer-marker {
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-    border-radius: 9999px;
-    padding: 6px;
-}
-
-/* PeerRow */
-
-.peer-row-prefix {
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-    border-radius: 9999px;
-    padding: 6px;
-}
-
 /* PlacePage */
 
 .place-page {
     padding: 24px;
-}
-
-.place-page-icon  {
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-    border-radius: 9999px;
-    padding: 24px;
-}
-
-/* SettingsView */
-
-.peer-image {
-    background-color: @accent_bg_color;
-    color: @accent_fg_color;
-    border-radius: 9999px;
-    padding: 6px;
 }
 
 /* Window */

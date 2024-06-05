@@ -5,7 +5,7 @@
       <object class="GtkImage" id="image">
         <property name="valign">center</property>
         <style>
-          <class name="peer-row-prefix"/>
+          <class name="small-icon"/>
         </style>
       </object>
     </child>

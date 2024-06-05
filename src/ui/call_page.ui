@@ -19,7 +19,7 @@
             <property name="halign">center</property>
             <property name="pixel-size">48</property>
             <style>
-              <class name="call-page-icon"/>
+              <class name="large-icon"/>
             </style>
           </object>
         </child>

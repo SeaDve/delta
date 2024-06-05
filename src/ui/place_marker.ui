@@ -8,7 +8,7 @@
           <object class="GtkImage" id="image">
             <property name="halign">center</property>
             <style>
-              <class name="place-marker"/>
+              <class name="small-icon"/>
             </style>
           </object>
         </child>

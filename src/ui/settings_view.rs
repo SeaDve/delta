@@ -81,7 +81,7 @@ mod imp {
                     .halign(gtk::Align::Center)
                     .icon_name(string_obj.string())
                     .build();
-                image.add_css_class("peer-image");
+                image.add_css_class("small-icon");
 
                 image.upcast()
             });
