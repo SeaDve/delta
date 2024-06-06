@@ -142,7 +142,7 @@ mod imp {
                 if imp
                     .view_stack
                     .visible_child()
-                    .is_some_and(|child| &child == imp.map_view.upcast_ref::<gtk::Widget>())
+                    .is_some_and(|child| child == *imp.map_view)
                 {
                     imp.map_view
                         .play_alert_animation(peer, alert_type.blink_count(), alert_color);
@@ -523,6 +523,38 @@ impl Window {
                         if let Err(err) = client.call_ongoing_end() {
                             tracing::error!("Failed to end ongoing call: {:?}", err);
                         }
+
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+
+            if imp
+                .view_stack
+                .visible_child()
+                .is_some_and(|child| child == *imp.map_view)
+                && imp.map_view.is_showing_places()
+            {
+                match word {
+                    "previous" => {
+                        tts::speak("Showing the previous place");
+
+                        imp.map_view.go_to_prev_place();
+
+                        break;
+                    }
+                    "next" => {
+                        tts::speak("Showing the next place");
+
+                        imp.map_view.go_to_next_place();
+
+                        break;
+                    }
+                    "exit" => {
+                        tts::speak("Exiting places view");
+
+                        imp.map_view.unshow_places();
 
                         break;
                     }

@@ -35,6 +35,12 @@ Say `delta` to activate the voice assistant, then say any of the following comma
 | `cancel`             | Cancel outgoing call.  |
 | `end`                | End ongoing call.      |
 
+| Places View Commands | Description          |
+| -------------------- | -------------------- |
+| `previous`           | Show previous place. |
+| `next`               | Show next place.     |
+| `exit`               | Exit places view.    |
+
 ### 📍 Nearby Places
 
 Nearby places are shown on the map. Click on a place to show a QR code for more information.

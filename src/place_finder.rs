@@ -117,6 +117,7 @@ impl PlaceType {
 
     fn as_raw(&self) -> &'static [&'static str] {
         match self {
+            PlaceType::Shop => &["marketplace"],
             PlaceType::Restaurant => &["restaurant", "bar", "fast_food", "cafe"],
             PlaceType::School => &["college", "school", "university", "library"],
             PlaceType::Parking => &["parking"],
@@ -125,7 +126,6 @@ impl PlaceType {
             PlaceType::Cinema => &["theatre", "cinema", "events_venue"],
             PlaceType::Telephone => &["telephone"],
             PlaceType::Bank => &["bank", "atm", "money_transfer", "bureau_de_change"],
-            PlaceType::Shop => &["marketplace"],
             PlaceType::Church => &["place_of_worship"],
             PlaceType::Fuel => &["fuel"],
             PlaceType::Police => &["police"],

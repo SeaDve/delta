@@ -375,7 +375,11 @@ impl MapView {
         Ok(())
     }
 
-    fn unshow_places(&self) {
+    pub fn is_showing_places(&self) -> bool {
+        self.imp().shown_place_index.get().is_some()
+    }
+
+    pub fn unshow_places(&self) {
         let imp = self.imp();
 
         let places_marker_layer = imp.places_marker_layer.get().unwrap();
@@ -390,7 +394,7 @@ impl MapView {
         self.update_place_control_sensitivity();
     }
 
-    fn go_to_prev_place(&self) {
+    pub fn go_to_prev_place(&self) {
         let imp = self.imp();
 
         let shown_places = imp.shown_places.borrow();
@@ -409,7 +413,7 @@ impl MapView {
         self.update_place_control_sensitivity();
     }
 
-    fn go_to_next_place(&self) {
+    pub fn go_to_next_place(&self) {
         let imp = self.imp();
 
         let shown_places = imp.shown_places.borrow();
