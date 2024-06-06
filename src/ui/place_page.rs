@@ -144,7 +144,7 @@ impl PlacePage {
 fn qrcode_texture_for_location(location: &Location) -> Result<gdk::Texture> {
     let qrcode_data = format!("geo:0,0?q={},{}", location.latitude, location.longitude);
     let qrcode = QrCode::new(qrcode_data)?;
-    let svg_bytes = qrcode.render::<svg::Color>().build();
+    let svg_bytes = qrcode.render::<svg::Color<'_>>().build();
     let texture = gdk::Texture::from_bytes(&svg_bytes.as_bytes().into())?;
     Ok(texture)
 }
