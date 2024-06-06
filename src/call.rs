@@ -17,15 +17,22 @@ const STREAMSINK_ELEMENT_NAME: &str = "giostreamsink";
 
 const DURATION_SECS_NOTIFTY_INTERVAL: Duration = Duration::from_millis(200);
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, glib::Enum)]
-#[enum_type(name = "DeltaCallState")]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, glib::Boxed)]
+#[boxed_type(name = "DeltaCallState")]
 pub enum CallState {
     #[default]
     Init,
     Incoming,
     Outgoing,
     Ongoing,
-    Ended,
+    Ended(CallEndReason),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CallEndReason {
+    PeerInAnotherCall,
+    PeerRejected,
+    Other,
 }
 
 mod imp {
@@ -44,7 +51,7 @@ mod imp {
     pub struct Call {
         #[property(get, set, construct_only)]
         pub(super) peer: OnceCell<Peer>,
-        #[property(get, set = Self::set_state, explicit_notify, builder(CallState::default()))]
+        #[property(get, set = Self::set_state, explicit_notify)]
         pub(super) state: Cell<CallState>,
         #[property(get = Self::duration_secs)]
         pub(super) duration_secs: PhantomData<u64>,
@@ -100,7 +107,7 @@ mod imp {
                     );
                     self.ongoing_timer_id.replace(Some(source_id));
                 }
-                CallState::Ended => {
+                CallState::Ended(_) => {
                     self.ongoing_time.set(None);
 
                     if let Some(source_id) = self.ongoing_timer_id.take() {
@@ -284,7 +291,7 @@ impl Call {
         imp.input_closed.set(true);
 
         if imp.output_closed.get() {
-            self.set_state(CallState::Ended);
+            self.set_state(CallState::Ended(CallEndReason::Other));
         }
     }
 
@@ -302,7 +309,7 @@ impl Call {
         imp.output_closed.set(true);
 
         if imp.input_closed.get() {
-            self.set_state(CallState::Ended);
+            self.set_state(CallState::Ended(CallEndReason::Other));
         }
     }
 }

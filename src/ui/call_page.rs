@@ -304,7 +304,7 @@ impl CallPage {
             Some(CallState::Ongoing) => {
                 imp.stack.set_visible_child(&*imp.ongoing_page);
             }
-            None | Some(CallState::Init) | Some(CallState::Ended) => {
+            None | Some(CallState::Init) | Some(CallState::Ended(_)) => {
                 // We don't do anything here so we avoid flickering
             }
         }

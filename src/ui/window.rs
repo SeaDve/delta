@@ -7,7 +7,7 @@ use gtk::glib::{self, clone};
 
 use crate::{
     application::Application,
-    call::{Call, CallState},
+    call::{Call, CallEndReason, CallState},
     client::{AlertType, Client},
     colors,
     crash_detector::CrashDetector,
@@ -186,9 +186,7 @@ mod imp {
                     ));
 
                     if active_call.state() == CallState::Incoming {
-                        tts::speak(
-                            format!("Incoming call from {}", active_call.peer().name()),
-                        );
+                        tts::speak(format!("Incoming call from {}", active_call.peer().name()));
                     }
 
                     imp.call_page.set_call(Some(active_call.clone()));
@@ -198,7 +196,23 @@ mod imp {
                         let imp = obj.imp();
 
                         match call.state() {
-                            CallState::Ended => {
+                            CallState::Ended(reason) => {
+                                match reason {
+                                    CallEndReason::PeerInAnotherCall => {
+                                        imp.toast_overlay.add_toast(adw::Toast::new(&format!(
+                                            "{} is in another call",
+                                            call.peer().name()
+                                        )));
+                                    }
+                                    CallEndReason::PeerRejected => {
+                                        imp.toast_overlay.add_toast(adw::Toast::new(&format!(
+                                            "{} rejected the call",
+                                            call.peer().name()
+                                        )));
+                                    }
+                                    CallEndReason::Other => {}
+                                }
+
                                 imp.call_page.set_call(None::<Call>);
                                 imp.page_stack.set_visible_child(&*imp.main_page);
                             }

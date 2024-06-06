@@ -17,7 +17,7 @@ use libp2p_stream as stream;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    call::{Call, CallState},
+    call::{Call, CallEndReason, CallState},
     config,
     input_stream::InputStream,
     location::Location,
@@ -206,7 +206,7 @@ impl Client {
             .context("No active outgoing call to cancel")?;
         debug_assert_eq!(active_call.state(), CallState::Outgoing);
 
-        active_call.set_state(CallState::Ended);
+        active_call.set_state(CallState::Ended(CallEndReason::Other));
 
         self.publish(PublishData::CallRequestCancel {
             destination: *active_call.peer().id(),
@@ -230,7 +230,7 @@ impl Client {
     fn set_active_call(&self, call: Option<Call>) {
         if let Some(ref call) = call {
             call.connect_state_notify(clone!(@weak self as obj => move |call| {
-                if call.state() == CallState::Ended {
+                if matches!(call.state(), CallState::Ended(_)) {
                     obj.set_active_call(None);
                 }
             }));
@@ -424,7 +424,9 @@ impl Client {
                         if self.active_call().is_some() {
                             self.publish(PublishData::CallRequestResponse {
                                 destination: their_peer_id,
-                                response: CallRequestResponse::Reject,
+                                response: CallRequestResponse::Reject(
+                                    CallRequestRejectReason::AlreadyInCall,
+                                ),
                             })
                             .await;
 
@@ -494,12 +496,12 @@ impl Client {
                                 if response == CallIncomingResponse::Reject {
                                     obj.publish(PublishData::CallRequestResponse {
                                         destination: their_peer_id,
-                                        response: CallRequestResponse::Reject,
+                                        response: CallRequestResponse::Reject(CallRequestRejectReason::UserRejected),
                                     })
                                     .await;
                                 }
 
-                                call.set_state(CallState::Ended);
+                                call.set_state(CallState::Ended(CallEndReason::Other));
                             }
                         }));
                     }
@@ -537,9 +539,19 @@ impl Client {
                                 active_call.set_input_stream(InputStream::new(input_stream))?;
                                 active_call.set_state(CallState::Ongoing);
                             }
-                            CallRequestResponse::Reject => {
+                            CallRequestResponse::Reject(reject_reason) => {
+                                let end_reason = match reject_reason {
+                                    CallRequestRejectReason::AlreadyInCall => {
+                                        CallEndReason::PeerInAnotherCall
+                                    }
+                                    CallRequestRejectReason::UserRejected => {
+                                        CallEndReason::PeerRejected
+                                    }
+                                    CallRequestRejectReason::Other => CallEndReason::Other,
+                                };
+
                                 let active_call = self.active_call().unwrap();
-                                active_call.set_state(CallState::Ended);
+                                active_call.set_state(CallState::Ended(end_reason));
                             }
                             CallRequestResponse::Cancelled => unreachable!(),
                         }
@@ -589,9 +601,16 @@ impl Client {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+enum CallRequestRejectReason {
+    AlreadyInCall,
+    UserRejected,
+    Other,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 enum CallRequestResponse {
     Accept,
-    Reject,
+    Reject(CallRequestRejectReason),
     Cancelled,
 }
 
