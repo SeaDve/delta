@@ -1,5 +1,5 @@
 #![allow(clippy::new_without_default)]
-#![warn(rust_2018_idioms, clippy::unused_async)]
+#![warn(rust_2018_idioms, clippy::unused_async, clippy::dbg_macro)]
 
 mod application;
 mod audio_device;
