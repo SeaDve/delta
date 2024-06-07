@@ -4,20 +4,16 @@ use anyhow::{anyhow, ensure, Context, Result};
 use futures_channel::oneshot;
 use futures_util::{select, FutureExt, StreamExt};
 use gtk::{
-    gio,
     glib::{self, clone, closure_local},
     prelude::*,
     subclass::prelude::*,
 };
 use libp2p::{
-    gossipsub,
-    identity::ed25519,
-    mdns,
+    gossipsub, mdns,
     swarm::{NetworkBehaviour, SwarmEvent},
     PeerId, StreamProtocol, Swarm, SwarmBuilder,
 };
 use libp2p_stream as stream;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -28,16 +24,10 @@ use crate::{
     output_stream::OutputStream,
     peer::Peer,
     peer_list::PeerList,
-    utils, Application,
+    Application,
 };
 
 const AUDIO_STREAM_PROTOCOL: StreamProtocol = StreamProtocol::new("/audio");
-
-static KEY_FILE: Lazy<gio::File> = Lazy::new(|| {
-    let mut path = config::user_config_dir();
-    path.push("ed25519");
-    gio::File::for_path(path)
-});
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, glib::Enum)]
 #[enum_type(name = "DeltaAlertType")]
@@ -269,32 +259,7 @@ impl Client {
         let (command_tx, command_rx) = async_channel::bounded(1);
         imp.command_tx.set(command_tx).unwrap();
 
-        let key_pair = match KEY_FILE.load_contents_future().await {
-            Ok((bytes, _)) => ed25519::Keypair::try_from_bytes(&mut bytes.to_vec())?,
-            Err(err) => {
-                if !err.matches(gio::IOErrorEnum::NotFound) {
-                    tracing::error!("Failed to load key file; creating a new one: {:?}", err);
-                }
-
-                let key_pair = ed25519::Keypair::generate();
-
-                utils::ensure_file_parents(&KEY_FILE)?;
-
-                KEY_FILE
-                    .replace_contents_future(
-                        key_pair.to_bytes(),
-                        None,
-                        false,
-                        gio::FileCreateFlags::REPLACE_DESTINATION,
-                    )
-                    .await
-                    .map_err(|(_, err)| err)?;
-
-                key_pair
-            }
-        };
-
-        let mut swarm = SwarmBuilder::with_existing_identity(key_pair.into())
+        let mut swarm = SwarmBuilder::with_new_identity()
             .with_async_std()
             .with_quic()
             .with_behaviour(|key| {

@@ -20,7 +20,6 @@ mod settings;
 mod stt;
 mod tts;
 mod ui;
-mod utils;
 
 use std::path::Path;
 

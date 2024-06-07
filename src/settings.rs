@@ -10,7 +10,7 @@ use gtk::{
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-use crate::{config, utils};
+use crate::config;
 
 static SETTINGS_FILE: Lazy<gio::File> = Lazy::new(|| {
     let mut path = config::user_config_dir();
@@ -105,7 +105,15 @@ impl Settings {
 
         let bytes = serde_json::to_vec(&*imp.data.borrow())?;
 
-        utils::ensure_file_parents(&SETTINGS_FILE)?;
+        if let Err(err) = SETTINGS_FILE
+            .parent()
+            .unwrap()
+            .make_directory_with_parents(gio::Cancellable::NONE)
+        {
+            if !err.matches(gio::IOErrorEnum::Exists) {
+                return Err(err.into());
+            }
+        }
 
         let etag = SETTINGS_FILE.replace_contents(
             &bytes,
