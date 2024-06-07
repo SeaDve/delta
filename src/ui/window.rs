@@ -43,6 +43,8 @@ mod imp {
         #[template_child]
         pub(super) main_page: TemplateChild<gtk::Box>,
         #[template_child]
+        pub(super) our_icon: TemplateChild<gtk::Image>,
+        #[template_child]
         pub(super) allowed_peers_status_icon: TemplateChild<gtk::Image>,
         #[template_child]
         pub(super) gps_status_icon: TemplateChild<gtk::Image>,
@@ -388,11 +390,15 @@ mod imp {
             obj.update_gps_status_icon();
             obj.update_location();
 
-            app.settings()
-                .connect_allowed_peers_notify(clone!(@weak obj => move |_| {
-                    obj.update_allowed_peers_status_icon();
-                }));
+            let settings = app.settings();
+            settings.connect_allowed_peers_notify(clone!(@weak obj => move |_| {
+                obj.update_allowed_peers_status_icon();
+            }));
+            settings.connect_icon_name_notify(clone!(@weak obj => move |_| {
+                obj.update_our_icon();
+            }));
             obj.update_allowed_peers_status_icon();
+            obj.update_our_icon();
 
             self.listening_overlay_revealer
                 .connect_child_revealed_notify(move |revealer| {
@@ -707,6 +713,13 @@ impl Window {
                 imp.gps_status_icon.add_css_class("success");
             }
         }
+    }
+
+    fn update_our_icon(&self) {
+        let imp = self.imp();
+
+        let settings = Application::get().settings();
+        imp.our_icon.set_icon_name(Some(&settings.icon_name()));
     }
 
     fn update_location(&self) {

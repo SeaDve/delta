@@ -33,16 +33,30 @@
                               <object class="GtkBox">
                                 <property name="margin-top">6</property>
                                 <property name="margin-bottom">6</property>
+                                <property name="orientation">vertical</property>
                                 <property name="spacing">6</property>
-                                <property name="halign">center</property>
                                 <child>
-                                  <object class="GtkImage" id="allowed_peers_status_icon">
-                                    <property name="icon-name">call-incoming-symbolic</property>
+                                  <object class="GtkImage" id="our_icon">
+                                    <property name="halign">center</property>
+                                    <style>
+                                      <class name="small-icon"/>
+                                    </style>
                                   </object>
                                 </child>
                                 <child>
-                                  <object class="GtkImage" id="gps_status_icon">
-                                    <property name="icon-name">globe-symbolic</property>
+                                  <object class="GtkBox">
+                                    <property name="spacing">6</property>
+                                    <property name="halign">center</property>
+                                    <child>
+                                      <object class="GtkImage" id="allowed_peers_status_icon">
+                                        <property name="icon-name">call-incoming-symbolic</property>
+                                      </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkImage" id="gps_status_icon">
+                                        <property name="icon-name">globe-symbolic</property>
+                                      </object>
+                                    </child>
                                   </object>
                                 </child>
                               </object>
