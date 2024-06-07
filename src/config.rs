@@ -1,6 +1,8 @@
-use std::env;
+use std::{env, path::PathBuf};
 
-use crate::location::Location;
+use gtk::glib;
+
+use crate::{location::Location, APP_ID};
 
 pub fn is_stt_enabled() -> bool {
     env::var("STT").is_ok_and(|s| s == "1")
@@ -32,4 +34,11 @@ pub fn location() -> Option<Location> {
             }
         })
         .ok()
+}
+
+pub fn user_config_dir() -> PathBuf {
+    let mut path = glib::user_config_dir();
+    path.push(APP_ID);
+    path.push(name());
+    path
 }

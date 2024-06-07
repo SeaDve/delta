@@ -10,11 +10,10 @@ use gtk::{
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
-use crate::APP_ID;
+use crate::config;
 
 static SETTINGS_FILE: Lazy<gio::File> = Lazy::new(|| {
-    let mut path = glib::user_config_dir();
-    path.push(APP_ID);
+    let mut path = config::user_config_dir();
     path.push("settings.json");
     gio::File::for_path(path)
 });
