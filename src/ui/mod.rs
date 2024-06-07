@@ -8,6 +8,7 @@ mod peer_row;
 mod place_marker;
 mod place_page;
 mod settings_view;
+mod toggle_button;
 mod window;
 
 pub use self::window::Window;

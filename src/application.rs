@@ -115,8 +115,8 @@ impl Application {
         self.imp().gps.clone()
     }
 
-    pub fn settings(&self) -> &Settings {
-        &self.imp().settings
+    pub fn settings(&self) -> Settings {
+        self.imp().settings.clone()
     }
 
     pub fn alert_led(&self) -> Result<&Led> {
@@ -142,8 +142,8 @@ impl Application {
         }) {
             Ok(led) => {
                 led.set_color(match self.settings().allowed_peers() {
-                    AllowedPeers::Everyone => Some(Color::Green),
-                    AllowedPeers::Whitelist => Some(Color::Blue),
+                    AllowedPeers::ExceptMuted => Some(Color::Blue),
+                    AllowedPeers::All => Some(Color::Green),
                     AllowedPeers::None => None,
                 });
             }

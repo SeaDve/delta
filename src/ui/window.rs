@@ -16,6 +16,7 @@ use crate::{
     location::Location,
     peer::Peer,
     place_finder::PlaceType,
+    settings::AllowedPeers,
     stt::Stt,
     tts,
     ui::{
@@ -41,6 +42,8 @@ mod imp {
         pub(super) page_stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub(super) main_page: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub(super) allowed_peers_status_icon: TemplateChild<gtk::Image>,
         #[template_child]
         pub(super) gps_status_icon: TemplateChild<gtk::Image>,
         #[template_child]
@@ -84,8 +87,6 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
-            CallPage::ensure_type();
-
             klass.bind_template();
         }
 
@@ -207,6 +208,12 @@ mod imp {
                                     CallEndReason::PeerRejected => {
                                         imp.toast_overlay.add_toast(adw::Toast::new(&format!(
                                             "{} rejected the call",
+                                            call.peer().name()
+                                        )));
+                                    }
+                                    CallEndReason::PeerMuted => {
+                                        imp.toast_overlay.add_toast(adw::Toast::new(&format!(
+                                            "{} does not currently accept calls",
                                             call.peer().name()
                                         )));
                                     }
@@ -369,7 +376,9 @@ mod imp {
                     imp.page_stack.set_visible_child(&*imp.crashed_page);
                 }));
 
-            let gps = Application::get().gps();
+            let app = Application::get();
+
+            let gps = app.gps();
             gps.connect_fix_mode_notify(clone!(@weak obj => move |_| {
                 obj.update_gps_status_icon();
             }));
@@ -378,6 +387,12 @@ mod imp {
             }));
             obj.update_gps_status_icon();
             obj.update_location();
+
+            app.settings()
+                .connect_allowed_peers_notify(clone!(@weak obj => move |_| {
+                    obj.update_allowed_peers_status_icon();
+                }));
+            obj.update_allowed_peers_status_icon();
 
             self.listening_overlay_revealer
                 .connect_child_revealed_notify(move |revealer| {
@@ -636,6 +651,33 @@ impl Window {
                     break;
                 }
                 _ => {}
+            }
+        }
+    }
+
+    fn update_allowed_peers_status_icon(&self) {
+        let imp = self.imp();
+
+        let settings = Application::get().settings();
+
+        match settings.allowed_peers() {
+            AllowedPeers::ExceptMuted => {
+                imp.allowed_peers_status_icon.remove_css_class("success");
+                imp.allowed_peers_status_icon.remove_css_class("error");
+
+                imp.allowed_peers_status_icon.add_css_class("accent");
+            }
+            AllowedPeers::All => {
+                imp.allowed_peers_status_icon.remove_css_class("accent");
+                imp.allowed_peers_status_icon.remove_css_class("error");
+
+                imp.allowed_peers_status_icon.add_css_class("success");
+            }
+            AllowedPeers::None => {
+                imp.allowed_peers_status_icon.remove_css_class("success");
+                imp.allowed_peers_status_icon.remove_css_class("accent");
+
+                imp.allowed_peers_status_icon.add_css_class("error");
             }
         }
     }

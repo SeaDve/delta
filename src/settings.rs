@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, collections::HashSet, fmt};
 
 use anyhow::{anyhow, Error, Result};
 use gtk::{
@@ -22,9 +22,19 @@ static SETTINGS_FILE: Lazy<gio::File> = Lazy::new(|| {
 #[enum_type(name = "DeltaAllowedPeers")]
 pub enum AllowedPeers {
     #[default]
-    Everyone,
-    Whitelist,
+    ExceptMuted,
+    All,
     None,
+}
+
+impl fmt::Display for AllowedPeers {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AllowedPeers::ExceptMuted => write!(f, "Except Muted"),
+            AllowedPeers::All => write!(f, "All"),
+            AllowedPeers::None => write!(f, "None"),
+        }
+    }
 }
 
 impl TryFrom<i32> for AllowedPeers {
@@ -35,9 +45,23 @@ impl TryFrom<i32> for AllowedPeers {
     }
 }
 
+#[derive(Debug, Default, Clone, Deserialize, Serialize, glib::Boxed)]
+#[serde(transparent)]
+#[boxed_type(name = "DeltaMutedPeers")]
+pub struct MutedPeers {
+    inner: HashSet<String>,
+}
+
+impl MutedPeers {
+    pub fn contains(&self, name: &str) -> bool {
+        self.inner.contains(name)
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 struct Data {
     allowed_peers: AllowedPeers,
+    muted_peers: MutedPeers,
     icon_name: String,
 }
 
@@ -45,6 +69,7 @@ impl Default for Data {
     fn default() -> Self {
         Self {
             allowed_peers: AllowedPeers::default(),
+            muted_peers: MutedPeers::default(),
             icon_name: "driving-symbolic".into(),
         }
     }
@@ -57,6 +82,7 @@ mod imp {
     #[properties(wrapper_type = super::Settings)]
     pub struct Settings {
         #[property(name = "allowed-peers", get, set, member = allowed_peers, type = AllowedPeers, builder(AllowedPeers::default()))]
+        #[property(name = "muted-peers", get, set, member = muted_peers, type = MutedPeers)]
         #[property(name = "icon-name", get, set, member = icon_name, type = String)]
         pub(super) data: RefCell<Data>,
 
@@ -125,6 +151,30 @@ impl Settings {
         imp.etag.replace(etag);
 
         Ok(())
+    }
+
+    pub fn insert_muted_peer(&self, peer_name: String) {
+        let imp = self.imp();
+
+        if imp.data.borrow_mut().muted_peers.inner.insert(peer_name) {
+            self.notify_muted_peers();
+        }
+    }
+
+    pub fn remove_muted_peer(&self, peer_name: &str) {
+        let imp = self.imp();
+
+        if imp.data.borrow_mut().muted_peers.inner.remove(peer_name) {
+            self.notify_muted_peers();
+        }
+    }
+
+    pub fn is_allowed_peer(&self, peer_name: &str) -> bool {
+        match self.allowed_peers() {
+            AllowedPeers::ExceptMuted => !self.muted_peers().contains(peer_name),
+            AllowedPeers::All => true,
+            AllowedPeers::None => false,
+        }
     }
 
     fn load(&self) -> Result<()> {

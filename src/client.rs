@@ -437,6 +437,25 @@ impl Client {
                             return Ok(());
                         }
 
+                        let peer = self
+                            .peer_list()
+                            .get(&their_peer_id)
+                            .context("Received call request for unknown peer")?;
+
+                        if !Application::get().settings().is_allowed_peer(&peer.name()) {
+                            self.publish(PublishData::CallRequestResponse {
+                                destination: their_peer_id,
+                                response: CallRequestResponse::Reject(
+                                    CallRequestRejectReason::MutedByUser,
+                                ),
+                            })
+                            .await;
+
+                            tracing::debug!("Ignored call from muted peer");
+
+                            return Ok(());
+                        }
+
                         let (call_incoming_response_tx, mut call_incoming_response_rx) =
                             oneshot::channel();
                         imp.call_incoming_response_tx
@@ -496,7 +515,7 @@ impl Client {
                                 if response == CallIncomingResponse::Reject {
                                     obj.publish(PublishData::CallRequestResponse {
                                         destination: their_peer_id,
-                                        response: CallRequestResponse::Reject(CallRequestRejectReason::UserRejected),
+                                        response: CallRequestResponse::Reject(CallRequestRejectReason::RejectedByUser),
                                     })
                                     .await;
                                 }
@@ -544,8 +563,11 @@ impl Client {
                                     CallRequestRejectReason::AlreadyInCall => {
                                         CallEndReason::PeerInAnotherCall
                                     }
-                                    CallRequestRejectReason::UserRejected => {
+                                    CallRequestRejectReason::RejectedByUser => {
                                         CallEndReason::PeerRejected
+                                    }
+                                    CallRequestRejectReason::MutedByUser => {
+                                        CallEndReason::PeerMuted
                                     }
                                     CallRequestRejectReason::Other => CallEndReason::Other,
                                 };
@@ -557,6 +579,17 @@ impl Client {
                         }
                     }
                     PublishData::Alert(alert_type) => {
+                        let peer = self
+                            .peer_list()
+                            .get(&their_peer_id)
+                            .context("Received alert from unknown peer")?;
+
+                        if !Application::get().settings().is_allowed_peer(&peer.name()) {
+                            tracing::debug!("Ignored alert from muted peer");
+
+                            return Ok(());
+                        }
+
                         let peer = self.peer_list().get(&their_peer_id).unwrap();
                         self.emit_by_name::<()>("alert-received", &[&peer, &alert_type]);
                     }
@@ -603,7 +636,8 @@ impl Client {
 #[derive(Debug, Serialize, Deserialize)]
 enum CallRequestRejectReason {
     AlreadyInCall,
-    UserRejected,
+    RejectedByUser,
+    MutedByUser,
     Other,
 }
 

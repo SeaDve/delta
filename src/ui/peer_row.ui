@@ -28,9 +28,10 @@
       </object>
     </child>
     <child type="suffix">
-      <object class="GtkButton">
+      <object class="DeltaToggleButton" id="mute_button">
         <property name="valign">center</property>
-        <property name="icon-name">view-more-symbolic</property>
+        <property name="default-icon-name">audio-volume-high-symbolic</property>
+        <property name="toggled-icon-name">audio-volume-muted-symbolic</property>
         <style>
           <class name="flat"/>
         </style>

@@ -2,7 +2,7 @@ use adw::prelude::*;
 use gtk::glib::{self, clone, closure_local};
 use shumate::{prelude::*, subclass::prelude::*};
 
-use crate::{peer::Peer, Application};
+use crate::{peer::Peer, ui::toggle_button::ToggleButton, Application};
 
 mod imp {
     use std::{
@@ -29,6 +29,8 @@ mod imp {
         pub(super) popover: TemplateChild<gtk::Popover>,
         #[template_child]
         pub(super) call_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(super) mute_button: TemplateChild<ToggleButton>,
 
         pub(super) peer: RefCell<Option<Peer>>,
         pub(super) peer_signals: OnceCell<glib::SignalGroup>,
@@ -60,6 +62,7 @@ mod imp {
                 Some("name"),
                 clone!(@weak obj => move |_, _| {
                     obj.update_name_label();
+                    obj.update_mute_button();
                 }),
             );
             peer_signals.connect_notify_local(
@@ -99,11 +102,31 @@ mod imp {
 
                     obj.emit_by_name::<()>("called", &[]);
                 }));
+            self.mute_button
+                .connect_is_active_notify(clone!(@weak obj => move |button| {
+                    let settings = Application::get().settings();
 
-            Application::get()
-                .gps()
+                    let Some(peer) = obj.peer() else {
+                        return;
+                    };
+
+                    if button.is_active() {
+                        settings.insert_muted_peer(peer.name());
+                    } else {
+                        settings.remove_muted_peer(&peer.name());
+                    }
+                }));
+
+            let app = Application::get();
+
+            app.gps()
                 .connect_location_notify(clone!(@weak obj => move |_| {
                     obj.update_distance_label();
+                }));
+
+            app.settings()
+                .connect_muted_peers_notify(clone!(@weak obj => move |_| {
+                    obj.update_mute_button();
                 }));
 
             obj.update_name_label();
@@ -111,6 +134,7 @@ mod imp {
             obj.update_speed_label();
             obj.update_location();
             obj.update_image_icon_name();
+            obj.update_mute_button();
         }
 
         fn dispose(&self) {
@@ -157,6 +181,7 @@ impl PeerMarker {
         self.update_speed_label();
         self.update_location();
         self.update_image_icon_name();
+        self.update_mute_button();
     }
 
     pub fn peer(&self) -> Option<Peer> {
@@ -220,5 +245,17 @@ impl PeerMarker {
 
         let icon_name = imp.peer.borrow().as_ref().map(|peer| peer.icon_name());
         imp.image.set_icon_name(icon_name.as_deref());
+    }
+
+    fn update_mute_button(&self) {
+        let imp = self.imp();
+
+        let is_muted = self.peer().is_some_and(|peer| {
+            Application::get()
+                .settings()
+                .muted_peers()
+                .contains(&peer.name())
+        });
+        imp.mute_button.set_is_active(is_muted);
     }
 }

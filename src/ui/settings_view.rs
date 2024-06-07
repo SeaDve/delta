@@ -171,7 +171,11 @@ mod imp {
             self.allowed_peers_row
                 .set_expression(Some(&gtk::ClosureExpression::new::<glib::GString>(
                     &[] as &[gtk::Expression],
-                    closure!(|list_item: adw::EnumListItem| list_item.name()),
+                    closure!(|list_item: adw::EnumListItem| {
+                        AllowedPeers::try_from(list_item.value())
+                            .unwrap()
+                            .to_string()
+                    }),
                 )));
             self.allowed_peers_row.connect_selected_notify(
                 clone!(@weak self as obj => move |row| {

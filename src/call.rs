@@ -32,6 +32,7 @@ pub enum CallState {
 pub enum CallEndReason {
     PeerInAnotherCall,
     PeerRejected,
+    PeerMuted,
     Other,
 }
 

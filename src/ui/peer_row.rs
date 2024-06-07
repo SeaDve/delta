@@ -1,7 +1,7 @@
 use adw::{prelude::*, subclass::prelude::*};
 use gtk::glib::{self, clone, closure_local};
 
-use crate::{peer::Peer, Application};
+use crate::{peer::Peer, ui::toggle_button::ToggleButton, Application};
 
 mod imp {
     use std::{cell::OnceCell, sync::OnceLock};
@@ -23,6 +23,8 @@ mod imp {
         pub(super) call_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub(super) view_on_map_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(super) mute_button: TemplateChild<ToggleButton>,
     }
 
     #[glib::object_subclass]
@@ -55,6 +57,17 @@ mod imp {
                 .connect_clicked(clone!(@weak obj => move |_| {
                     obj.emit_by_name::<()>("viewed-on-map", &[]);
                 }));
+            self.mute_button
+                .connect_is_active_notify(clone!(@weak obj => move |button| {
+                    let settings = Application::get().settings();
+                    let peer = obj.peer();
+
+                    if button.is_active() {
+                        settings.insert_muted_peer(peer.name());
+                    } else {
+                        settings.remove_muted_peer(&peer.name());
+                    }
+                }));
 
             let peer = obj.peer();
             peer.bind_property("name", &*obj, "title")
@@ -63,6 +76,9 @@ mod imp {
             peer.bind_property("icon-name", &*self.image, "icon-name")
                 .sync_create()
                 .build();
+            peer.connect_name_notify(clone!(@weak obj => move |_| {
+                obj.update_mute_button();
+            }));
             peer.connect_location_notify(clone!(@weak obj => move |_| {
                 obj.update_subtitle();
                 obj.update_view_on_map_button_sensitivity();
@@ -71,14 +87,21 @@ mod imp {
                 obj.update_subtitle();
             }));
 
-            Application::get()
-                .gps()
+            let app = Application::get();
+
+            app.gps()
                 .connect_location_notify(clone!(@weak obj => move |_| {
                     obj.update_subtitle();
                 }));
 
+            app.settings()
+                .connect_muted_peers_notify(clone!(@weak obj => move |_| {
+                    obj.update_mute_button();
+                }));
+
             obj.update_subtitle();
             obj.update_view_on_map_button_sensitivity();
+            obj.update_mute_button();
         }
 
         fn signals() -> &'static [Signal] {
@@ -147,5 +170,15 @@ impl PeerRow {
 
         let location = self.peer().location();
         imp.view_on_map_button.set_sensitive(location.is_some());
+    }
+
+    fn update_mute_button(&self) {
+        let imp = self.imp();
+
+        let is_muted = Application::get()
+            .settings()
+            .muted_peers()
+            .contains(&self.peer().name());
+        imp.mute_button.set_is_active(is_muted);
     }
 }
