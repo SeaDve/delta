@@ -669,13 +669,13 @@ impl Window {
         match settings.allowed_peers() {
             AllowedPeers::ExceptMuted => {
                 imp.allowed_peers_status_icon.remove_css_class("success");
-                imp.allowed_peers_status_icon.remove_css_class("error");
+                imp.allowed_peers_status_icon.remove_css_class("dim-label");
 
                 imp.allowed_peers_status_icon.add_css_class("accent");
             }
             AllowedPeers::All => {
                 imp.allowed_peers_status_icon.remove_css_class("accent");
-                imp.allowed_peers_status_icon.remove_css_class("error");
+                imp.allowed_peers_status_icon.remove_css_class("dim-label");
 
                 imp.allowed_peers_status_icon.add_css_class("success");
             }
@@ -683,7 +683,7 @@ impl Window {
                 imp.allowed_peers_status_icon.remove_css_class("success");
                 imp.allowed_peers_status_icon.remove_css_class("accent");
 
-                imp.allowed_peers_status_icon.add_css_class("error");
+                imp.allowed_peers_status_icon.add_css_class("dim-label");
             }
         }
     }
