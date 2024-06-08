@@ -43,6 +43,12 @@
                 </property>
               </object>
             </child>
+            <child>
+              <object class="AdwExpanderRow" id="muted_peers_row">
+                <property name="title">Muted Peers</property>
+                <property name="subtitle">Mute calls and alerts from these peers</property>
+              </object>
+            </child>
           </object>
         </child>
         <child>

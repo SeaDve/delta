@@ -56,6 +56,14 @@ impl MutedPeers {
     pub fn contains(&self, name: &str) -> bool {
         self.inner.contains(name)
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &String> {
+        self.inner.iter()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]

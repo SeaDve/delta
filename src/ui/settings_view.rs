@@ -18,7 +18,7 @@ const ICON_LIST: &[&str] = &[
 
 mod imp {
     use std::{
-        cell::{Cell, OnceCell},
+        cell::{Cell, OnceCell, RefCell},
         sync::OnceLock,
     };
 
@@ -38,6 +38,8 @@ mod imp {
         #[template_child]
         pub(super) allowed_peers_model: TemplateChild<adw::EnumListModel>,
         #[template_child]
+        pub(super) muted_peers_row: TemplateChild<adw::ExpanderRow>,
+        #[template_child]
         pub(super) simulate_crash_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub(super) map: TemplateChild<shumate::Map>,
@@ -45,6 +47,8 @@ mod imp {
         pub(super) marker: OnceCell<shumate::Marker>,
 
         pub(super) initial_zoom_done: Cell<bool>,
+
+        pub(super) muted_peers_row_items: RefCell<Vec<adw::ActionRow>>,
     }
 
     #[glib::object_subclass]
@@ -71,7 +75,11 @@ mod imp {
             let obj = self.obj();
 
             let app = Application::get();
+
             let settings = app.settings();
+            settings.connect_muted_peers_notify(clone!(@weak obj => move |_| {
+                obj.update_muted_peers_row_items();
+            }));
 
             let icon_model = gtk::StringList::new(ICON_LIST);
             self.icon_flow_box.bind_model(Some(&icon_model), |item| {
@@ -192,7 +200,8 @@ mod imp {
                 }),
             );
 
-            obj.update_marker_location()
+            obj.update_marker_location();
+            obj.update_muted_peers_row_items();
         }
 
         fn dispose(&self) {
@@ -275,5 +284,38 @@ impl SettingsView {
                 imp.map.center_on(location.latitude, location.longitude);
             }
         }
+    }
+
+    fn update_muted_peers_row_items(&self) {
+        let imp = self.imp();
+
+        let settings = Application::get().settings();
+
+        for row in imp.muted_peers_row_items.take() {
+            imp.muted_peers_row.remove(&row);
+        }
+
+        let muted_peers = settings.muted_peers();
+
+        for peer_name in muted_peers.iter() {
+            let row = adw::ActionRow::builder().title(peer_name).build();
+
+            let unmute_button = gtk::Button::builder()
+                .icon_name("edit-delete-symbolic")
+                .valign(gtk::Align::Center)
+                .build();
+            unmute_button.add_css_class("flat");
+            unmute_button.connect_clicked(clone!(@strong peer_name, @weak settings => move |_| {
+                settings.remove_muted_peer(&peer_name);
+            }));
+            row.add_suffix(&unmute_button);
+
+            imp.muted_peers_row.add_row(&row);
+
+            imp.muted_peers_row_items.borrow_mut().push(row);
+        }
+
+        imp.muted_peers_row
+            .set_enable_expansion(!muted_peers.is_empty());
     }
 }
