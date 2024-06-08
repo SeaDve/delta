@@ -592,7 +592,7 @@ impl Window {
                     let peer = client.peer_list().iter::<Peer>().find_map(|peer| {
                         let peer = peer.unwrap();
 
-                        (peer_name == peer.name()).then_some(peer)
+                        (peer_name.eq_ignore_ascii_case(&peer.name())).then_some(peer)
                     });
 
                     if let Some(peer) = peer {
