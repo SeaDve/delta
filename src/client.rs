@@ -24,6 +24,7 @@ use crate::{
     output_stream::OutputStream,
     peer::Peer,
     peer_list::PeerList,
+    wireless_info::SignalQuality,
     Application,
 };
 
@@ -120,6 +121,18 @@ mod imp {
                         .await;
                     });
                 }));
+
+            app.wireless_info().connect_signal_quality_notify(
+                clone!(@weak obj => move |wireless_info| {
+                    let signal_quality = wireless_info.signal_quality();
+                    glib::spawn_future_local(async move {
+                        obj.publish(PublishData::PropertyChanged(vec![Property::SignalQuality(
+                            signal_quality,
+                        )]))
+                        .await;
+                    });
+                }),
+            );
         }
 
         fn signals() -> &'static [Signal] {
@@ -412,6 +425,9 @@ impl Client {
                                 Property::Speed(speed) => {
                                     peer.set_speed(speed);
                                 }
+                                Property::SignalQuality(signal_quality) => {
+                                    peer.set_signal_quality(signal_quality);
+                                }
                                 Property::IconName(icon_name) => {
                                     peer.set_icon_name(icon_name);
                                 }
@@ -613,10 +629,13 @@ impl Client {
 
                 let icon_name = app.settings().icon_name();
 
+                let signal_quality = app.wireless_info().signal_quality();
+
                 self.publish(PublishData::PropertyChanged(vec![
                     Property::Name(config::name()),
                     Property::Location(location),
                     Property::Speed(speed),
+                    Property::SignalQuality(signal_quality),
                     Property::IconName(icon_name),
                 ]))
                 .await;
@@ -660,6 +679,7 @@ enum Property {
     Name(String),
     Location(Option<Location>),
     Speed(f64),
+    SignalQuality(SignalQuality),
     IconName(String),
 }
 

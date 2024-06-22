@@ -1,7 +1,7 @@
 use gtk::{glib, prelude::*, subclass::prelude::*};
 use libp2p::PeerId;
 
-use crate::location::Location;
+use crate::{location::Location, wireless_info::SignalQuality};
 
 mod imp {
     use std::cell::{Cell, OnceCell, RefCell};
@@ -19,6 +19,8 @@ mod imp {
         pub(super) location: RefCell<Option<Location>>,
         #[property(get, set)]
         pub(super) speed: Cell<f64>,
+        #[property(get, set, builder(SignalQuality::default()))]
+        pub(super) signal_quality: Cell<SignalQuality>,
         #[property(get, set)]
         pub(super) icon_name: RefCell<String>,
     }

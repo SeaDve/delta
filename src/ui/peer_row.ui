@@ -10,6 +10,14 @@
       </object>
     </child>
     <child type="suffix">
+      <object class="GtkImage" id="wireless_status_icon">
+        <property name="margin-start">6</property>
+        <property name="margin-end">6</property>
+        <property name="margin-top">6</property>
+        <property name="margin-bottom">6</property>
+      </object>
+    </child>
+    <child type="suffix">
       <object class="GtkButton" id="call_button">
         <property name="valign">center</property>
         <property name="icon-name">call-start-symbolic</property>

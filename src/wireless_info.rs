@@ -11,11 +11,12 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
+use serde::{Deserialize, Serialize};
 
 const INFO_PATH: &str = "/proc/net/wireless";
 const REFRESH_INTERVAL: Duration = Duration::from_secs(1);
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, glib::Enum)]
 #[enum_type(name = "DeltaSignalQuality")]
 pub enum SignalQuality {
     #[default]
@@ -24,6 +25,41 @@ pub enum SignalQuality {
     Ok,
     Good,
     Excellent,
+}
+
+impl SignalQuality {
+    pub fn icon_name(&self) -> &str {
+        match self {
+            SignalQuality::Excellent => "network-cellular-signal-excellent-symbolic",
+            SignalQuality::Good => "network-cellular-signal-good-symbolic",
+            SignalQuality::Ok => "network-cellular-signal-ok-symbolic",
+            SignalQuality::Weak => "network-cellular-signal-weak-symbolic",
+            SignalQuality::None => "network-cellular-signal-none-symbolic",
+        }
+    }
+
+    pub fn apply_css_class_to_image(&self, image: &gtk::Image) {
+        match self {
+            SignalQuality::Excellent | SignalQuality::Good => {
+                image.remove_css_class("error");
+                image.remove_css_class("warning");
+
+                image.add_css_class("success");
+            }
+            SignalQuality::Ok => {
+                image.remove_css_class("success");
+                image.remove_css_class("error");
+
+                image.add_css_class("warning");
+            }
+            SignalQuality::Weak | SignalQuality::None => {
+                image.remove_css_class("success");
+                image.remove_css_class("warning");
+
+                image.add_css_class("error");
+            }
+        }
+    }
 }
 
 mod imp {

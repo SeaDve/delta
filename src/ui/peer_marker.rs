@@ -26,6 +26,8 @@ mod imp {
         #[template_child]
         pub(super) speed_label: TemplateChild<gtk::Label>,
         #[template_child]
+        pub(super) wireless_status_icon: TemplateChild<gtk::Image>,
+        #[template_child]
         pub(super) popover: TemplateChild<gtk::Popover>,
         #[template_child]
         pub(super) call_button: TemplateChild<gtk::Button>,
@@ -79,6 +81,12 @@ mod imp {
                 }),
             );
             peer_signals.connect_notify_local(
+                Some("signal-quality"),
+                clone!(@weak obj => move |_, _| {
+                    obj.update_wireless_status_icon();
+                }),
+            );
+            peer_signals.connect_notify_local(
                 Some("icon-name"),
                 clone!(@weak obj => move |_, _| {
                     obj.update_image_icon_name();
@@ -92,7 +100,7 @@ mod imp {
 
                 imp.popover.popup();
             }));
-            obj.add_controller(gesture_click);
+            self.image.add_controller(gesture_click);
 
             self.call_button
                 .connect_clicked(clone!(@weak obj => move |_| {
@@ -133,6 +141,7 @@ mod imp {
             obj.update_distance_label();
             obj.update_speed_label();
             obj.update_location();
+            obj.update_wireless_status_icon();
             obj.update_image_icon_name();
             obj.update_mute_button();
         }
@@ -180,6 +189,7 @@ impl PeerMarker {
         self.update_distance_label();
         self.update_speed_label();
         self.update_location();
+        self.update_wireless_status_icon();
         self.update_image_icon_name();
         self.update_mute_button();
     }
@@ -238,6 +248,20 @@ impl PeerMarker {
         if let Some(location) = location {
             self.set_location(location.latitude, location.longitude);
         }
+    }
+
+    fn update_wireless_status_icon(&self) {
+        let imp = self.imp();
+
+        let signal_quality = self
+            .peer()
+            .map(|peer| peer.signal_quality())
+            .unwrap_or_default();
+
+        imp.wireless_status_icon
+            .set_icon_name(Some(signal_quality.icon_name()));
+
+        signal_quality.apply_css_class_to_image(&imp.wireless_status_icon);
     }
 
     fn update_image_icon_name(&self) {

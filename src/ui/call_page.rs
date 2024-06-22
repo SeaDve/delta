@@ -38,6 +38,8 @@ mod imp {
         #[template_child]
         pub(super) caller_speed_label: TemplateChild<gtk::Label>,
         #[template_child]
+        pub(super) wireless_status_icon: TemplateChild<gtk::Image>,
+        #[template_child]
         pub(super) stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub(super) incoming_page: TemplateChild<gtk::Box>,
@@ -138,6 +140,12 @@ mod imp {
                 }),
             );
             peer_signals.connect_notify_local(
+                Some("signal-quality"),
+                clone!(@weak obj => move |_, _| {
+                    obj.update_wireless_status_icon();
+                }),
+            );
+            peer_signals.connect_notify_local(
                 Some("icon-name"),
                 clone!(@weak obj => move |_, _| {
                     obj.update_image_icon_name();
@@ -160,6 +168,7 @@ mod imp {
             obj.update_caller_distance_label();
             obj.update_caller_speed_label();
             obj.update_duration_label();
+            obj.update_wireless_status_icon();
             obj.update_image_icon_name();
         }
 
@@ -201,6 +210,7 @@ mod imp {
             obj.update_caller_distance_label();
             obj.update_caller_speed_label();
             obj.update_duration_label();
+            obj.update_wireless_status_icon();
             obj.update_image_icon_name();
 
             obj.notify_call();
@@ -315,6 +325,20 @@ impl CallPage {
 
         let duration_secs = self.call().map(|call| call.duration_secs()).unwrap_or(0);
         imp.duration_label.set_label(&format_time(duration_secs));
+    }
+
+    fn update_wireless_status_icon(&self) {
+        let imp = self.imp();
+
+        let signal_quality = self
+            .call()
+            .map(|call| call.peer().signal_quality())
+            .unwrap_or_default();
+
+        imp.wireless_status_icon
+            .set_icon_name(Some(signal_quality.icon_name()));
+
+        signal_quality.apply_css_class_to_image(&imp.wireless_status_icon);
     }
 
     fn update_image_icon_name(&self) {

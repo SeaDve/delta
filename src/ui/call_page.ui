@@ -52,6 +52,14 @@
                 </style>
               </object>
             </child>
+            <child>
+              <object class="GtkImage" id="wireless_status_icon">
+                <property name="margin-start">6</property>
+                <property name="margin-end">6</property>
+                <property name="margin-top">6</property>
+                <property name="margin-bottom">6</property>
+              </object>
+            </child>
           </object>
         </child>
       </object>

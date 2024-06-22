@@ -20,6 +20,8 @@ mod imp {
         #[template_child]
         pub(super) image: TemplateChild<gtk::Image>,
         #[template_child]
+        pub(super) wireless_status_icon: TemplateChild<gtk::Image>,
+        #[template_child]
         pub(super) call_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub(super) view_on_map_button: TemplateChild<gtk::Button>,
@@ -86,6 +88,9 @@ mod imp {
             peer.connect_speed_notify(clone!(@weak obj => move |_| {
                 obj.update_subtitle();
             }));
+            peer.connect_signal_quality_notify(clone!(@weak obj => move |_| {
+                obj.update_wireless_status_icon();
+            }));
 
             let app = Application::get();
 
@@ -102,6 +107,7 @@ mod imp {
             obj.update_subtitle();
             obj.update_view_on_map_button_sensitivity();
             obj.update_mute_button();
+            obj.update_wireless_status_icon();
         }
 
         fn signals() -> &'static [Signal] {
@@ -163,6 +169,17 @@ impl PeerRow {
             .collect::<Vec<_>>()
             .join(" • ");
         self.set_subtitle(&subtitle);
+    }
+
+    fn update_wireless_status_icon(&self) {
+        let imp = self.imp();
+
+        let signal_quality = self.peer().signal_quality();
+
+        imp.wireless_status_icon
+            .set_icon_name(Some(signal_quality.icon_name()));
+
+        signal_quality.apply_css_class_to_image(&imp.wireless_status_icon);
     }
 
     fn update_view_on_map_button_sensitivity(&self) {

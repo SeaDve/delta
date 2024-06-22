@@ -10,6 +10,7 @@ use crate::{
     led::{Color, Led},
     settings::{AllowedPeers, Settings},
     ui::Window,
+    wireless_info::WirelessInfo,
     APP_ID, GRESOURCE_PREFIX,
 };
 
@@ -30,6 +31,7 @@ mod imp {
     pub struct Application {
         pub(super) gps: Gps,
         pub(super) settings: Settings,
+        pub(super) wireless_info: WirelessInfo,
 
         pub(super) allowed_peers_led: OnceCell<Led>,
         pub(super) alert_led: OnceCell<Led>,
@@ -117,6 +119,10 @@ impl Application {
 
     pub fn settings(&self) -> Settings {
         self.imp().settings.clone()
+    }
+
+    pub fn wireless_info(&self) -> WirelessInfo {
+        self.imp().wireless_info.clone()
     }
 
     pub fn alert_led(&self) -> Result<&Led> {

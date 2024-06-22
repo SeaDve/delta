@@ -38,6 +38,14 @@
                 </style>
               </object>
             </child>
+            <child>
+              <object class="GtkImage" id="wireless_status_icon">
+                <property name="icon-name">network-cellular-signal-excellent-symbolic</property>
+                <style>
+                  <class name="success"/>
+                </style>
+              </object>
+            </child>
           </object>
         </child>
         <child>
