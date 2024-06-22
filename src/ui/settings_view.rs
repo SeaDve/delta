@@ -1,3 +1,5 @@
+use std::process::Command;
+
 use adw::prelude::*;
 use gtk::{
     gdk,
@@ -41,6 +43,10 @@ mod imp {
         pub(super) muted_peers_row: TemplateChild<adw::ExpanderRow>,
         #[template_child]
         pub(super) simulate_crash_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(super) quit_button: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub(super) shutdown_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub(super) map: TemplateChild<shumate::Map>,
 
@@ -128,6 +134,14 @@ mod imp {
                 .connect_clicked(clone!(@weak obj => move |_| {
                     obj.emit_by_name::<()>("crash-simulate-requested", &[]);
                 }));
+            self.quit_button.connect_clicked(|_| {
+                Application::get().quit();
+            });
+            self.shutdown_button.connect_clicked(|_| {
+                if let Err(err) = Command::new("shutdown").arg("now").spawn() {
+                    tracing::error!("Failed to run shutdown command: {:?}", err);
+                }
+            });
 
             let viewport = self.map.viewport().unwrap();
             let registry = shumate::MapSourceRegistry::with_defaults();

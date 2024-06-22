@@ -64,7 +64,31 @@
                     <child>
                       <object class="GtkButton" id="simulate_crash_button">
                         <property name="valign">center</property>
-                        <property name="label">Test</property>
+                        <property name="label">Simulate</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwActionRow">
+                    <property name="title">Quit Application</property>
+                    <property name="subtitle">Close the application</property>
+                    <child>
+                      <object class="GtkButton" id="quit_button">
+                        <property name="valign">center</property>
+                        <property name="label">Quit</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwActionRow">
+                    <property name="title">Shutdown Device</property>
+                    <property name="subtitle">Start shutdown sequence of the device</property>
+                    <child>
+                      <object class="GtkButton" id="shutdown_button">
+                        <property name="valign">center</property>
+                        <property name="label">Shutdown</property>
                       </object>
                     </child>
                   </object>
