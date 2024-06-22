@@ -28,6 +28,8 @@ use crate::{
     Application,
 };
 
+const PUBLISH_PROPERTIES_INTERVAL: Duration = Duration::from_secs(5);
+
 const AUDIO_STREAM_PROTOCOL: StreamProtocol = StreamProtocol::new("/audio");
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, glib::Enum)]
@@ -259,6 +261,27 @@ impl Client {
         self.send_command(Command::Publish(data)).await;
     }
 
+    async fn publish_properties(&self) {
+        let app = Application::get();
+
+        let gps = app.gps();
+        let location = gps.location();
+        let speed = gps.speed();
+
+        let icon_name = app.settings().icon_name();
+
+        let signal_quality = app.wireless_info().signal_quality();
+
+        self.publish(PublishData::PropertyChanged(vec![
+            Property::Name(config::name()),
+            Property::Location(location),
+            Property::Speed(speed),
+            Property::SignalQuality(signal_quality),
+            Property::IconName(icon_name),
+        ]))
+        .await;
+    }
+
     async fn send_command(&self, command: Command) {
         let imp = self.imp();
 
@@ -331,6 +354,15 @@ impl Client {
                 } else {
                     tracing::warn!("Received stream without active call");
                 }
+            }
+        }));
+
+        // Periodically publish our properties as a workaround to missing packets on unreliable networks
+        glib::spawn_future_local(clone!(@weak self as obj => async move {
+            loop {
+                glib::timeout_future(PUBLISH_PROPERTIES_INTERVAL).await;
+
+                obj.publish_properties().await;
             }
         }));
 
@@ -621,24 +653,7 @@ impl Client {
                 // add us to their peer list. So add a bit of delay before publishing our properties.
                 glib::timeout_future(Duration::from_millis(200)).await;
 
-                let app = Application::get();
-
-                let gps = app.gps();
-                let location = gps.location();
-                let speed = gps.speed();
-
-                let icon_name = app.settings().icon_name();
-
-                let signal_quality = app.wireless_info().signal_quality();
-
-                self.publish(PublishData::PropertyChanged(vec![
-                    Property::Name(config::name()),
-                    Property::Location(location),
-                    Property::Speed(speed),
-                    Property::SignalQuality(signal_quality),
-                    Property::IconName(icon_name),
-                ]))
-                .await;
+                self.publish_properties().await;
             }
             SwarmEvent::NewListenAddr { address, .. } => {
                 tracing::trace!("Local node is listening on {address}");
