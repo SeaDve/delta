@@ -44,6 +44,9 @@
                                   </object>
                                 </child>
                                 <child>
+                                  <object class="GtkImage" id="wireless_status_icon"/>
+                                </child>
+                                <child>
                                   <object class="GtkBox">
                                     <property name="spacing">6</property>
                                     <property name="halign">center</property>

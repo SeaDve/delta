@@ -23,6 +23,7 @@ use crate::{
         call_page::CallPage, crashed_page::CrashedPage, listening_overlay::ListeningOverlay,
         map_view::MapView, peer_row::PeerRow, place_page::PlacePage, settings_view::SettingsView,
     },
+    wireless_info::{SignalQuality, WirelessInfo},
     GRESOURCE_PREFIX,
 };
 
@@ -44,6 +45,8 @@ mod imp {
         pub(super) main_page: TemplateChild<gtk::Box>,
         #[template_child]
         pub(super) our_icon: TemplateChild<gtk::Image>,
+        #[template_child]
+        pub(super) wireless_status_icon: TemplateChild<gtk::Image>,
         #[template_child]
         pub(super) allowed_peers_status_icon: TemplateChild<gtk::Image>,
         #[template_child]
@@ -80,6 +83,7 @@ mod imp {
         pub(super) stt_is_accepting_segments: Cell<bool>,
 
         pub(super) crash_detector: CrashDetector,
+        pub(super) wireless_info: WirelessInfo,
     }
 
     #[glib::object_subclass]
@@ -377,6 +381,11 @@ mod imp {
 
                     imp.page_stack.set_visible_child(&*imp.crashed_page);
                 }));
+            self.wireless_info
+                .connect_signal_quality_notify(clone!(@weak obj => move |_| {
+                    obj.update_wireless_status_icon();
+                }));
+            obj.update_wireless_status_icon();
 
             let app = Application::get();
 
@@ -657,6 +666,42 @@ impl Window {
                     break;
                 }
                 _ => {}
+            }
+        }
+    }
+
+    fn update_wireless_status_icon(&self) {
+        let imp = self.imp();
+
+        let signal_quality = imp.wireless_info.signal_quality();
+
+        let icon_name = match signal_quality {
+            SignalQuality::Excellent => "network-cellular-signal-excellent-symbolic",
+            SignalQuality::Good => "network-cellular-signal-good-symbolic",
+            SignalQuality::Ok => "network-cellular-signal-ok-symbolic",
+            SignalQuality::Weak => "network-cellular-signal-weak-symbolic",
+            SignalQuality::None => "network-cellular-signal-none-symbolic",
+        };
+        imp.wireless_status_icon.set_icon_name(Some(icon_name));
+
+        match signal_quality {
+            SignalQuality::Excellent | SignalQuality::Good => {
+                imp.wireless_status_icon.remove_css_class("error");
+                imp.wireless_status_icon.remove_css_class("warning");
+
+                imp.wireless_status_icon.add_css_class("success");
+            }
+            SignalQuality::Ok => {
+                imp.wireless_status_icon.remove_css_class("success");
+                imp.wireless_status_icon.remove_css_class("error");
+
+                imp.wireless_status_icon.add_css_class("warning");
+            }
+            SignalQuality::Weak | SignalQuality::None => {
+                imp.wireless_status_icon.remove_css_class("success");
+                imp.wireless_status_icon.remove_css_class("warning");
+
+                imp.wireless_status_icon.add_css_class("error");
             }
         }
     }
