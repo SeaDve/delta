@@ -28,7 +28,7 @@ use crate::{
     Application,
 };
 
-const PUBLISH_PROPERTIES_INTERVAL: Duration = Duration::from_secs(5);
+const PUBLISH_PROPERTIES_INTERVAL: Duration = Duration::from_secs(3);
 
 const AUDIO_STREAM_PROTOCOL: StreamProtocol = StreamProtocol::new("/audio");
 
