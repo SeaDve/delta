@@ -145,7 +145,7 @@ async fn read_signal_quality() -> Result<f32> {
         let line = line?;
         let line = line.trim();
 
-        if line.starts_with("wlan") && line.contains(':') {
+        if line.starts_with("wl") && line.contains(':') {
             let (iface_name, info) = line.split_once(':').context("No colon")?;
             tracing::trace!("Found wireless interface `{}`", iface_name);
 
