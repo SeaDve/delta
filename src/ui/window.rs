@@ -28,6 +28,8 @@ use crate::{
 
 const ALERT_LED_BLINK_INTERVAL: Duration = Duration::from_millis(500);
 
+const ALERT_AUTO_BROADCAST_WITHOUT_RESPONSE_DURATION: Duration = Duration::from_secs(30);
+
 mod imp {
     use std::cell::{Cell, OnceCell, RefCell};
 
@@ -82,6 +84,7 @@ mod imp {
         pub(super) stt_is_accepting_segments: Cell<bool>,
 
         pub(super) crash_detector: CrashDetector,
+        pub(super) alert_auto_broadcast_source_id: RefCell<Option<glib::SourceId>>,
     }
 
     #[glib::object_subclass]
@@ -311,16 +314,12 @@ mod imp {
 
             self.crashed_page.connect_send_alert_requested(
                 clone!(@weak obj, @weak client => move |_| {
-                    let imp = obj.imp();
-                    imp.page_stack.set_visible_child(&*imp.main_page);
-
-                    obj.publish_alert(AlertType::Sos);
+                    obj.handle_crashed_send_alert_requested();
                 }),
             );
             self.crashed_page
                 .connect_ignored(clone!(@weak obj => move |_| {
-                    let imp = obj.imp();
-                    imp.page_stack.set_visible_child(&*imp.main_page);
+                    obj.handle_crashed_ignored();
                 }));
 
             self.place_page.connect_done(clone!(@weak obj => move |_| {
@@ -375,9 +374,7 @@ mod imp {
 
             self.crash_detector
                 .connect_crash_detected(clone!(@weak obj => move |_| {
-                    let imp = obj.imp();
-
-                    imp.page_stack.set_visible_child(&*imp.crashed_page);
+                    obj.handle_crash_detected();
                 }));
 
             let app = Application::get();
@@ -667,6 +664,48 @@ impl Window {
                 _ => {}
             }
         }
+    }
+
+    fn handle_crash_detected(&self) {
+        let imp = self.imp();
+
+        let alert_auto_broadcast_source_id = glib::timeout_add_local_once(
+            ALERT_AUTO_BROADCAST_WITHOUT_RESPONSE_DURATION,
+            clone!(@weak self as obj => move || {
+                let imp = obj.imp();
+
+                let toast = adw::Toast::new("Broadcasted an automatic alert");
+                imp.toast_overlay.add_toast(toast);
+
+                obj.handle_crashed_send_alert_requested();
+            }),
+        );
+        imp.alert_auto_broadcast_source_id
+            .replace(Some(alert_auto_broadcast_source_id));
+
+        imp.page_stack.set_visible_child(&*imp.crashed_page);
+    }
+
+    fn handle_crashed_send_alert_requested(&self) {
+        let imp = self.imp();
+
+        if let Some(source_id) = imp.alert_auto_broadcast_source_id.take() {
+            source_id.remove();
+        }
+
+        imp.page_stack.set_visible_child(&*imp.main_page);
+
+        self.publish_alert(AlertType::Sos);
+    }
+
+    fn handle_crashed_ignored(&self) {
+        let imp = self.imp();
+
+        if let Some(source_id) = imp.alert_auto_broadcast_source_id.take() {
+            source_id.remove();
+        }
+
+        imp.page_stack.set_visible_child(&*imp.main_page);
     }
 
     fn update_wireless_status_icon(&self) {

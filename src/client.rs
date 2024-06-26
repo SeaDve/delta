@@ -256,7 +256,7 @@ impl Client {
     }
 
     async fn publish(&self, data: PublishData) {
-        tracing::debug!("Publishing data: {:?}", data);
+        tracing::trace!("Publishing data: {:?}", data);
 
         self.send_command(Command::Publish(data)).await;
     }

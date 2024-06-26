@@ -10,7 +10,7 @@
     <child>
       <object class="AdwStatusPage" id="status_page">
         <property name="title">Crash Detected!</property>
-        <property name="description">Your emergency contacts will be notified of your location.</property>
+        <property name="description">Your emergency contacts will be notified of your location. If no response was provided within 30 seconds, an automatic alert will be broadcasted</property>
         <property name="child">
           <object class="GtkBox">
             <property name="spacing">12</property>
