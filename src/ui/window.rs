@@ -677,6 +677,8 @@ impl Window {
                 let toast = adw::Toast::new("Broadcasted an automatic alert");
                 imp.toast_overlay.add_toast(toast);
 
+                tts::speak("Broadcasted an automatic alert");
+
                 obj.handle_crashed_send_alert_requested();
             }),
         );
