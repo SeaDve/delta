@@ -669,6 +669,7 @@ impl Window {
     fn handle_crash_detected(&self) {
         let imp = self.imp();
 
+        // TODO Show timer on the crashed page
         let alert_auto_broadcast_source_id = glib::timeout_add_local_once(
             ALERT_AUTO_BROADCAST_WITHOUT_RESPONSE_DURATION,
             clone!(@weak self as obj => move || {
