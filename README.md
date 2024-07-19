@@ -55,6 +55,11 @@ The user can set their display icon as well as set communication preferences.
 
 Vehicles can communicate with infrastructure like traffic lights, road signs, and toll gates.
 
+### 🚨 Driver Alertness Detection
+
+Driver alertness is monitored by sensors, such as a camera. When the driver is detected to be drowsy,
+a warning is shown.
+
 ## 🏗️ Building and Running
 
 1. Set up a toolbox container.
