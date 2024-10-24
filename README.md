@@ -60,6 +60,44 @@ Vehicles can communicate with infrastructure like traffic lights, road signs, an
 Driver alertness is monitored by sensors, such as a camera. When the driver is detected to be drowsy,
 a warning is shown.
 
+## 📷 Screenshots
+
+### List View
+
+![List View](data/screenshots/list-view.png)
+
+### Map View
+
+![Map View](data/screenshots/map-view.png)
+
+### Nearby Places
+
+![Nearby Places](data/screenshots/nearby-places.png)
+
+### Place Directions
+
+![Place Directions](data/screenshots/place-directions.png)
+
+### Alert Broadcasting
+
+![Alert Broadcasting](data/screenshots/alert-broadcasting.png)
+
+### Personalization Settings
+
+![Personalization Settings](data/screenshots/personalization-settings.png)
+
+### Privacy Settings
+
+![Privacy Settings](data/screenshots/privacy-settings.png)
+
+### Peer Calling
+
+![Peer Calling](data/screenshots/peer-calling.png)
+
+### Voice Activation
+
+![Voice Activation](data/screenshots/voice-activation.png)
+
 ## 🏗️ Building and Running
 
 1. Set up a toolbox container.
