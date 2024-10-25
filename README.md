@@ -2,7 +2,7 @@
 
 **De**centralized **L**and **T**ransportation **A**ssistant
 
-Delta is a land transportation communication system designed for safety,
+DeLTA is a land transportation communication system designed for safety,
 convenience, and accessibility.
 
 ## ✨ Features
