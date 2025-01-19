@@ -101,15 +101,10 @@ a warning is shown.
 ## 🏗️ Building and Running
 
 1. Set up a toolbox container.
-   - Run, `toolbox create --image quay.io/toolbx-images/debian-toolbox:12`
+   - Run, `toolbox create --distro ubuntu --release 24.04`
 2. Set up Rust via `rustup`.
    - Optionally, install `rust-analyzer` via `rustup component add rust-analyzer`.
-3. Install the required dependencies.
-
-```sh
-sudo apt install libgtk-4-dev libadwaita-1-dev libshumate-dev libgstreamer1.0-dev gstreamer1.0-plugins-good libspeechd-dev speech-dispatcher cmake clang gpsd gpsd-clients
-```
-
+3. Run `./setup` to install the required dependencies.
 4. Set up text-to-speech (TTS).
    1. Uncomment the required locale from `/etc/locale.gen`.
    2. Install `locales` via `apt` and run `/usr/sbin/locale-gen`.

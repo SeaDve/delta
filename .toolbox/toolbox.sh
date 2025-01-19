@@ -1,3 +1,3 @@
 #!/bin/sh
 
-/app/bin/host-spawn -no-pty toolbox --container debian-toolbox-12 "$@"
+/app/bin/host-spawn -no-pty toolbox --container ubuntu-toolbox-24.04 "$@"
