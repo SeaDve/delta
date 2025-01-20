@@ -101,10 +101,15 @@ mod imp {
                     let source_id = glib::timeout_add_local_full(
                         DURATION_SECS_NOTIFTY_INTERVAL,
                         glib::Priority::LOW,
-                        clone!(@weak obj => @default-panic, move || {
-                            obj.notify_duration_secs();
-                            glib::ControlFlow::Continue
-                        }),
+                        clone!(
+                            #[weak]
+                            obj,
+                            #[upgrade_or_panic]
+                            move || {
+                                obj.notify_duration_secs();
+                                glib::ControlFlow::Continue
+                            }
+                        ),
                     );
                     self.ongoing_timer_id.replace(Some(source_id));
                 }
@@ -171,11 +176,12 @@ impl Call {
         let bus_watch_guard = pipeline
             .bus()
             .unwrap()
-            .add_watch_local(
-                clone!(@weak self as obj => @default-panic,move |_, message| {
-                    obj.handle_input_bus_message(message)
-                }),
-            )
+            .add_watch_local(clone!(
+                #[weak(rename_to = obj)]
+                self,
+                #[upgrade_or_panic]
+                move |_, message| obj.handle_input_bus_message(message)
+            ))
             .unwrap();
 
         pipeline.set_state(gst::State::Playing)?;
@@ -214,11 +220,12 @@ impl Call {
         let bus_watch_guard = pipeline
             .bus()
             .unwrap()
-            .add_watch_local(
-                clone!(@weak self as obj => @default-panic,move |_, message| {
-                    obj.handle_output_bus_message(message)
-                }),
-            )
+            .add_watch_local(clone!(
+                #[weak(rename_to = obj)]
+                self,
+                #[upgrade_or_panic]
+                move |_, message| obj.handle_output_bus_message(message)
+            ))
             .unwrap();
         pipeline.set_state(gst::State::Playing)?;
 
@@ -235,18 +242,26 @@ impl Call {
             gst::MessageView::Eos(..) => {
                 tracing::debug!("Received EOS event on input bus");
 
-                glib::spawn_future_local(clone!(@weak self as obj => async move {
-                    obj.dispose_input().await;
-                }));
+                glib::spawn_future_local(clone!(
+                    #[weak(rename_to = obj)]
+                    self,
+                    async move {
+                        obj.dispose_input().await;
+                    }
+                ));
 
                 glib::ControlFlow::Break
             }
             gst::MessageView::Error(err) => {
                 tracing::warn!("Error from input bus: {:?}", err);
 
-                glib::spawn_future_local(clone!(@weak self as obj => async move {
-                    obj.dispose_input().await;
-                }));
+                glib::spawn_future_local(clone!(
+                    #[weak(rename_to = obj)]
+                    self,
+                    async move {
+                        obj.dispose_input().await;
+                    }
+                ));
 
                 glib::ControlFlow::Break
             }
@@ -259,18 +274,26 @@ impl Call {
             gst::MessageView::Eos(..) => {
                 tracing::debug!("Received EOS event on output bus");
 
-                glib::spawn_future_local(clone!(@weak self as obj => async move {
-                    obj.dispose_output().await;
-                }));
+                glib::spawn_future_local(clone!(
+                    #[weak(rename_to = obj)]
+                    self,
+                    async move {
+                        obj.dispose_output().await;
+                    }
+                ));
 
                 glib::ControlFlow::Break
             }
             gst::MessageView::Error(err) => {
                 tracing::warn!("Error from output bus: {:?}", err);
 
-                glib::spawn_future_local(clone!(@weak self as obj => async move {
-                    obj.dispose_output().await;
-                }));
+                glib::spawn_future_local(clone!(
+                    #[weak(rename_to = obj)]
+                    self,
+                    async move {
+                        obj.dispose_output().await;
+                    }
+                ));
 
                 glib::ControlFlow::Break
             }

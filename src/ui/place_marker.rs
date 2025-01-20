@@ -56,16 +56,22 @@ mod imp {
             self.name_label.set_label(&place.name());
 
             let gesture_click = gtk::GestureClick::new();
-            gesture_click.connect_released(clone!(@weak obj => move |_, _, _, _| {
-                obj.emit_by_name::<()>("show-place-requested", &[]);
-            }));
+            gesture_click.connect_released(clone!(
+                #[weak]
+                obj,
+                move |_, _, _, _| {
+                    obj.emit_by_name::<()>("show-place-requested", &[]);
+                }
+            ));
             self.image.add_controller(gesture_click);
 
-            Application::get()
-                .gps()
-                .connect_location_notify(clone!(@weak obj => move |_| {
+            Application::get().gps().connect_location_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.update_distance_label();
-                }));
+                }
+            ));
 
             obj.update_distance_label();
         }

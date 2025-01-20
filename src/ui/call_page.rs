@@ -86,70 +86,110 @@ mod imp {
 
             let obj = self.obj();
 
-            self.accept_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.accept_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("incoming-accepted", &[]);
-                }));
-            self.decline_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+                }
+            ));
+            self.decline_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("incoming-declined", &[]);
-                }));
+                }
+            ));
 
-            self.cancel_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.cancel_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("outgoing-cancelled", &[]);
-                }));
+                }
+            ));
 
-            self.end_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.end_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("ongoing-ended", &[]);
-                }));
+                }
+            ));
 
             let call_signals = glib::SignalGroup::new::<Call>();
             call_signals.connect_notify_local(
                 Some("state"),
-                clone!(@weak obj => move |_, _|  {
-                    obj.update_stack();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_stack();
+                    }
+                ),
             );
             call_signals.connect_notify_local(
                 Some("duration-secs"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_duration_label();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_duration_label();
+                    }
+                ),
             );
             self.call_signals.set(call_signals).unwrap();
 
             let peer_signals = glib::SignalGroup::new::<Peer>();
             peer_signals.connect_notify_local(
                 Some("name"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_caller_name_label();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_caller_name_label();
+                    }
+                ),
             );
             peer_signals.connect_notify_local(
                 Some("location"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_caller_distance_label();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_caller_distance_label();
+                    }
+                ),
             );
             peer_signals.connect_notify_local(
                 Some("speed"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_caller_speed_label();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_caller_speed_label();
+                    }
+                ),
             );
             peer_signals.connect_notify_local(
                 Some("signal-quality"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_wireless_status_icon();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_wireless_status_icon();
+                    }
+                ),
             );
             peer_signals.connect_notify_local(
                 Some("icon-name"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_image_icon_name();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_image_icon_name();
+                    }
+                ),
             );
             self.peer_signals.set(peer_signals.clone()).unwrap();
 
@@ -157,11 +197,13 @@ mod imp {
                 .bind("peer", &peer_signals, "target")
                 .build();
 
-            Application::get()
-                .gps()
-                .connect_location_notify(clone!(@weak obj => move |_| {
+            Application::get().gps().connect_location_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.update_caller_distance_label();
-                }));
+                }
+            ));
 
             obj.update_stack();
             obj.update_caller_name_label();

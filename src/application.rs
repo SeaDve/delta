@@ -63,10 +63,13 @@ mod imp {
             obj.setup_actions();
             obj.setup_accels();
 
-            self.settings
-                .connect_allowed_peers_notify(clone!(@weak obj => move |_| {
+            self.settings.connect_allowed_peers_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.update_allowed_peers_led_color();
-                }));
+                }
+            ));
 
             obj.update_allowed_peers_led_color();
         }

@@ -116,15 +116,19 @@ impl Gps {
         let stdout = child.stdout.take().unwrap();
         let reader = BufReader::new(stdout);
 
-        glib::spawn_future_local(clone!(@weak self as obj =>  async move {
-            let mut lines = reader.lines();
+        glib::spawn_future_local(clone!(
+            #[weak(rename_to = obj)]
+            self,
+            async move {
+                let mut lines = reader.lines();
 
-            while let Some(line) = lines.next().await {
-                if let Err(err) = obj.handle_gpspipe_output(line) {
-                    tracing::error!("Failed to handle gpspipe output: {:?}", err);
+                while let Some(line) = lines.next().await {
+                    if let Err(err) = obj.handle_gpspipe_output(line) {
+                        tracing::error!("Failed to handle gpspipe output: {:?}", err);
+                    }
                 }
             }
-        }));
+        ));
 
         Ok(())
     }

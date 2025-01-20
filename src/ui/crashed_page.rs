@@ -43,15 +43,21 @@ mod imp {
 
             let obj = self.obj();
 
-            self.send_alert_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.send_alert_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("send-alert-requested", &[]);
-                }));
+                }
+            ));
 
-            self.ignore_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.ignore_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("ignored", &[]);
-                }));
+                }
+            ));
         }
 
         fn dispose(&self) {

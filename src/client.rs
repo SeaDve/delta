@@ -87,34 +87,48 @@ mod imp {
 
             let obj = self.obj();
 
-            glib::spawn_future_local(clone!(@weak obj => async move {
-                if let Err(err) = obj.init().await {
-                    tracing::error!("Failed to initialize client: {:?}", err);
+            glib::spawn_future_local(clone!(
+                #[weak]
+                obj,
+                async move {
+                    if let Err(err) = obj.init().await {
+                        tracing::error!("Failed to initialize client: {:?}", err);
+                    }
                 }
-            }));
+            ));
 
             let app = Application::get();
 
             let gps = app.gps();
-            gps.connect_location_notify(clone!(@weak obj => move |gps| {
-                let location = gps.location();
-                glib::spawn_future_local(async move {
-                    obj.publish(PublishData::PropertyChanged(vec![Property::Location(
-                        location,
-                    )]))
-                    .await;
-                });
-            }));
-            gps.connect_speed_notify(clone!(@weak obj => move |gps| {
-                let speed = gps.speed();
-                glib::spawn_future_local(async move {
-                    obj.publish(PublishData::PropertyChanged(vec![Property::Speed(speed)]))
+            gps.connect_location_notify(clone!(
+                #[weak]
+                obj,
+                move |gps| {
+                    let location = gps.location();
+                    glib::spawn_future_local(async move {
+                        obj.publish(PublishData::PropertyChanged(vec![Property::Location(
+                            location,
+                        )]))
                         .await;
-                });
-            }));
+                    });
+                }
+            ));
+            gps.connect_speed_notify(clone!(
+                #[weak]
+                obj,
+                move |gps| {
+                    let speed = gps.speed();
+                    glib::spawn_future_local(async move {
+                        obj.publish(PublishData::PropertyChanged(vec![Property::Speed(speed)]))
+                            .await;
+                    });
+                }
+            ));
 
-            app.settings()
-                .connect_icon_name_notify(clone!(@weak obj => move |settings| {
+            app.settings().connect_icon_name_notify(clone!(
+                #[weak]
+                obj,
+                move |settings| {
                     let icon_name = settings.icon_name();
                     glib::spawn_future_local(async move {
                         obj.publish(PublishData::PropertyChanged(vec![Property::IconName(
@@ -122,10 +136,13 @@ mod imp {
                         )]))
                         .await;
                     });
-                }));
+                }
+            ));
 
-            app.wireless_info().connect_signal_quality_notify(
-                clone!(@weak obj => move |wireless_info| {
+            app.wireless_info().connect_signal_quality_notify(clone!(
+                #[weak]
+                obj,
+                move |wireless_info| {
                     let signal_quality = wireless_info.signal_quality();
                     glib::spawn_future_local(async move {
                         obj.publish(PublishData::PropertyChanged(vec![Property::SignalQuality(
@@ -133,8 +150,8 @@ mod imp {
                         )]))
                         .await;
                     });
-                }),
-            );
+                }
+            ));
         }
 
         fn signals() -> &'static [Signal] {
@@ -244,11 +261,15 @@ impl Client {
 
     fn set_active_call(&self, call: Option<Call>) {
         if let Some(ref call) = call {
-            call.connect_state_notify(clone!(@weak self as obj => move |call| {
-                if matches!(call.state(), CallState::Ended(_)) {
-                    obj.set_active_call(None);
+            call.connect_state_notify(clone!(
+                #[weak(rename_to = obj)]
+                self,
+                move |call| {
+                    if matches!(call.state(), CallState::Ended(_)) {
+                        obj.set_active_call(None);
+                    }
                 }
-            }));
+            ));
         }
 
         self.imp().active_call.replace(call);
@@ -339,32 +360,42 @@ impl Client {
             .new_control()
             .accept(AUDIO_STREAM_PROTOCOL)?;
 
-        glib::spawn_future_local(clone!(@weak self as obj => async move {
-            while let Some((their_peer_id, output_stream)) = incoming_streams.next().await {
-                tracing::debug!("Incoming stream from {}", their_peer_id);
+        glib::spawn_future_local(clone!(
+            #[weak(rename_to = obj)]
+            self,
+            async move {
+                while let Some((their_peer_id, output_stream)) = incoming_streams.next().await {
+                    tracing::debug!("Incoming stream from {}", their_peer_id);
 
-                if let Some(active_call) = obj.active_call() {
-                    if active_call.peer().id() == &their_peer_id {
-                        if let Err(err) = active_call.set_output_stream(OutputStream::new(output_stream))  {
-                            tracing::error!("Failed to set output stream: {:?}", err);
+                    if let Some(active_call) = obj.active_call() {
+                        if active_call.peer().id() == &their_peer_id {
+                            if let Err(err) =
+                                active_call.set_output_stream(OutputStream::new(output_stream))
+                            {
+                                tracing::error!("Failed to set output stream: {:?}", err);
+                            }
+                        } else {
+                            tracing::warn!("Received stream from unexpected peer: {their_peer_id}");
                         }
                     } else {
-                        tracing::warn!("Received stream from unexpected peer: {their_peer_id}");
+                        tracing::warn!("Received stream without active call");
                     }
-                } else {
-                    tracing::warn!("Received stream without active call");
                 }
             }
-        }));
+        ));
 
         // Periodically publish our properties as a workaround to missing packets on unreliable networks
-        glib::spawn_future_local(clone!(@weak self as obj => async move {
-            loop {
-                glib::timeout_future(PUBLISH_PROPERTIES_INTERVAL).await;
+        glib::spawn_future_local(clone!(
+            #[weak(rename_to = obj)]
+            self,
+            async move {
+                loop {
+                    glib::timeout_future(PUBLISH_PROPERTIES_INTERVAL).await;
 
-                obj.publish_properties().await;
+                    obj.publish_properties().await;
+                }
             }
-        }));
+        ));
 
         loop {
             futures_util::select! {
@@ -523,54 +554,63 @@ impl Client {
                         let mut stream_control = swarm.behaviour().stream.new_control();
 
                         // Spawn a task here so we don't block the loop while waiting for the response
-                        glib::spawn_future_local(clone!(@weak self as obj => async move {
-                            let response = select! {
-                                response = call_incoming_response_rx => response.unwrap(),
-                                _ = call_incoming_cancel_rx => CallIncomingResponse::Cancelled,
-                            };
-
-                            tracing::debug!("Received call request: {:?}", response);
-
-                            if response == CallIncomingResponse::Accept {
-                                tracing::debug!("Opening output stream to {their_peer_id}");
-
-                                let input_stream = match stream_control
-                                    .open_stream(their_peer_id, AUDIO_STREAM_PROTOCOL)
-                                    .await
-                                {
-                                    Ok(stream) => stream,
-                                    Err(err) => {
-                                        tracing::error!("Failed to open output stream: {:?}", err);
-                                        return;
-                                    }
+                        glib::spawn_future_local(clone!(
+                            #[weak(rename_to = obj)]
+                            self,
+                            async move {
+                                let response = select! {
+                                    response = call_incoming_response_rx => response.unwrap(),
+                                    _ = call_incoming_cancel_rx => CallIncomingResponse::Cancelled,
                                 };
 
-                                if let Err(err) =
-                                    call.set_input_stream(InputStream::new(input_stream))
-                                {
-                                    tracing::error!("Failed to set input stream: {:?}", err);
-                                    return;
-                                }
+                                tracing::debug!("Received call request: {:?}", response);
 
-                                call.set_state(CallState::Ongoing);
+                                if response == CallIncomingResponse::Accept {
+                                    tracing::debug!("Opening output stream to {their_peer_id}");
 
-                                obj.publish(PublishData::CallRequestResponse {
-                                    destination: their_peer_id,
-                                    response: CallRequestResponse::Accept,
-                                })
-                                .await;
-                            } else {
-                                if response == CallIncomingResponse::Reject {
+                                    let input_stream = match stream_control
+                                        .open_stream(their_peer_id, AUDIO_STREAM_PROTOCOL)
+                                        .await
+                                    {
+                                        Ok(stream) => stream,
+                                        Err(err) => {
+                                            tracing::error!(
+                                                "Failed to open output stream: {:?}",
+                                                err
+                                            );
+                                            return;
+                                        }
+                                    };
+
+                                    if let Err(err) =
+                                        call.set_input_stream(InputStream::new(input_stream))
+                                    {
+                                        tracing::error!("Failed to set input stream: {:?}", err);
+                                        return;
+                                    }
+
+                                    call.set_state(CallState::Ongoing);
+
                                     obj.publish(PublishData::CallRequestResponse {
                                         destination: their_peer_id,
-                                        response: CallRequestResponse::Reject(CallRequestRejectReason::RejectedByUser),
+                                        response: CallRequestResponse::Accept,
                                     })
                                     .await;
-                                }
+                                } else {
+                                    if response == CallIncomingResponse::Reject {
+                                        obj.publish(PublishData::CallRequestResponse {
+                                            destination: their_peer_id,
+                                            response: CallRequestResponse::Reject(
+                                                CallRequestRejectReason::RejectedByUser,
+                                            ),
+                                        })
+                                        .await;
+                                    }
 
-                                call.set_state(CallState::Ended(CallEndReason::Other));
+                                    call.set_state(CallState::Ended(CallEndReason::Other));
+                                }
                             }
-                        }));
+                        ));
                     }
                     PublishData::CallRequestCancel { ref destination }
                         if destination == swarm.local_peer_id() =>

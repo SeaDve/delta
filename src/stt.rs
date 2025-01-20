@@ -148,11 +148,12 @@ impl Stt {
 
         let bus = pipeline.bus().unwrap();
         let bus_watch_guard = bus
-            .add_watch_local(
-                clone!(@weak self as obj => @default-panic, move |_, message| {
-                    obj.handle_bus_message(message)
-                }),
-            )
+            .add_watch_local(clone!(
+                #[weak(rename_to = obj)]
+                self,
+                #[upgrade_or_panic]
+                move |_, message| obj.handle_bus_message(message)
+            ))
             .unwrap();
 
         imp.pipeline
@@ -167,11 +168,15 @@ impl Stt {
         });
         imp.thread_handle.replace(Some(thread_handle));
 
-        let fut_handle = glib::spawn_future_local(clone!(@weak self as obj => async move {
-            while let Ok(segment) = segment_rx.recv().await {
-                obj.emit_by_name::<()>("transcripted", &[&segment]);
+        let fut_handle = glib::spawn_future_local(clone!(
+            #[weak(rename_to = obj)]
+            self,
+            async move {
+                while let Ok(segment) = segment_rx.recv().await {
+                    obj.emit_by_name::<()>("transcripted", &[&segment]);
+                }
             }
-        }));
+        ));
         imp.fut_handle.replace(Some(fut_handle));
 
         pipeline.set_state(gst::State::Playing)?;

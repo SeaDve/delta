@@ -2,22 +2,23 @@
 name = "delta"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.84"
 
 [dependencies]
-adw = { package = "libadwaita", version = "0.6", features = ["v1_2"] }
+adw = { package = "libadwaita", version = "0.7", features = ["v1_5"] }
 adxl345_driver2 = "2.0.1"
 anyhow = "1.0.82"
-async-channel = "2.2.1"
+async-channel = "2.3"
 async-lock = "3.4.0"
 async-process = "2.2.2"
 async-std = "1.12.0"
 futures-channel = "0.3.30"
 futures-util = "0.3.30"
-gst = { package = "gstreamer", version = "0.22", features = ["v1_22"] }
-gtk = { package = "gtk4", version = "0.8.1", features = ["gnome_43"] }
-gvdb = { version = "0.6.1", features = ["gresource"] }
+gst = { package = "gstreamer", version = "0.23", features = ["v1_22"] }
+gtk = { package = "gtk4", version = "0.9", features = ["gnome_43"] }
+gvdb = { version = "0.8", features = ["gresource"] }
 indexmap = "2.2.6"
-libp2p = { version = "0.53.2", features = [
+libp2p = { version = "0.55", features = [
     "async-std",
     "gossipsub",
     "macros",
@@ -25,15 +26,15 @@ libp2p = { version = "0.53.2", features = [
     "quic",
     "serde",
 ] }
-libp2p-stream = "0.1.0-alpha"
+libp2p-stream = "0.3.0-alpha"
 once_cell = "1.19.0"
-osmpbfreader = "0.16.1"
+osmpbfreader = "0.17"
 qrcode = "0.14.0"
-rppal = { version = "0.18", features = ["hal"] }
+rppal = { version = "0.22", features = ["hal"] }
 serde = { version = "1.0.198", features = ["derive"] }
 serde_json = "1.0.64"
-shumate = { package = "libshumate", version = "0.5.0" }
+shumate = { package = "libshumate", version = "0.6.0" }
 speech-dispatcher = "0.16.0"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
-whisper-rs = "0.11.1"
+whisper-rs = "0.13"

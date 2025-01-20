@@ -49,16 +49,23 @@ mod imp {
             let peer_signals = glib::SignalGroup::new::<Peer>();
             peer_signals.connect_notify_local(
                 Some("location"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_location();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_location();
+                    }
+                ),
             );
             self.peer_signals.set(peer_signals).unwrap();
 
-            let animation_target =
-                adw::CallbackAnimationTarget::new(clone!(@weak obj => move |_| {
+            let animation_target = adw::CallbackAnimationTarget::new(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.queue_draw();
-                }));
+                }
+            ));
             let animation = adw::TimedAnimation::builder()
                 .widget(&*obj)
                 .duration(ANIMATION_DURATION_MS)

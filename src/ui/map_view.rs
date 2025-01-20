@@ -118,8 +118,10 @@ mod imp {
 
             let obj = self.obj();
 
-            self.return_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.return_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     let imp = obj.imp();
 
                     let our_marker = imp.our_marker.get().unwrap();
@@ -127,7 +129,8 @@ mod imp {
                         latitude: our_marker.latitude(),
                         longitude: our_marker.longitude(),
                     });
-                }));
+                }
+            ));
 
             self.place_control_revealer
                 .connect_child_revealed_notify(|revealer| {
@@ -135,18 +138,27 @@ mod imp {
                         revealer.set_visible(false);
                     }
                 });
-            self.prev_place_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.prev_place_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.go_to_prev_place();
-                }));
-            self.next_place_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+                }
+            ));
+            self.next_place_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.go_to_next_place();
-                }));
-            self.unshow_places_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+                }
+            ));
+            self.unshow_places_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.unshow_places();
-                }));
+                }
+            ));
 
             for place_type in PlaceType::all() {
                 let button = gtk::Button::builder()
@@ -155,13 +167,17 @@ mod imp {
                     .build();
                 self.places_toolbar.append(&button);
 
-                button.connect_clicked(clone!(@weak obj => move |_| {
-                    glib::spawn_future_local(async move {
-                        if let Err(err) = obj.show_places_and_go_to_nearest(*place_type).await {
-                            tracing::warn!("Failed to show places: {:?}", err);
-                        }
-                    });
-                }));
+                button.connect_clicked(clone!(
+                    #[weak]
+                    obj,
+                    move |_| {
+                        glib::spawn_future_local(async move {
+                            if let Err(err) = obj.show_places_and_go_to_nearest(*place_type).await {
+                                tracing::warn!("Failed to show places: {:?}", err);
+                            }
+                        });
+                    }
+                ));
             }
 
             obj.update_place_control_sensitivity();
@@ -235,8 +251,10 @@ impl MapView {
     }
 
     pub fn bind_model(&self, model: &PeerList) {
-        model.connect_items_changed(
-            clone!(@weak self as obj => move |model, position, removed, added| {
+        model.connect_items_changed(clone!(
+            #[weak(rename_to = obj)]
+            self,
+            move |model, position, removed, added| {
                 let imp = obj.imp();
 
                 let new_markers = (0..added).map(|i| {
@@ -249,10 +267,14 @@ impl MapView {
                     let peer_marker = PeerMarker::new();
                     peer_marker.set_peer(Some(peer.clone()));
 
-                    peer_marker.connect_called(clone!(@weak obj => move |marker| {
-                        let peer = marker.peer().unwrap();
-                        obj.emit_by_name::<()>("called", &[&peer]);
-                    }));
+                    peer_marker.connect_called(clone!(
+                        #[weak]
+                        obj,
+                        move |marker| {
+                            let peer = marker.peer().unwrap();
+                            obj.emit_by_name::<()>("called", &[&peer]);
+                        }
+                    ));
 
                     let alert_marker = AlertMarker::new();
                     alert_marker.set_peer(Some(peer.clone()));
@@ -277,8 +299,8 @@ impl MapView {
                     marker_layer.remove_marker(&peer_marker);
                     marker_layer.remove_marker(&alert_marker);
                 }
-            }),
-        );
+            }
+        ));
     }
 
     pub fn set_location(&self, location: Option<Location>) {
@@ -339,12 +361,14 @@ impl MapView {
 
         for place in places {
             let place_marker = PlaceMarker::new(place);
-            place_marker.connect_show_place_requested(
-                clone!(@weak self as obj => move |place_marker| {
+            place_marker.connect_show_place_requested(clone!(
+                #[weak(rename_to = obj)]
+                self,
+                move |place_marker| {
                     let place = place_marker.place();
                     obj.emit_by_name::<()>("show-place-requested", &[&place]);
-                }),
-            );
+                }
+            ));
             places_marker_layer.add_marker(&place_marker);
         }
 

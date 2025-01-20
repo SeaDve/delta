@@ -51,16 +51,24 @@ mod imp {
 
             let obj = self.obj();
 
-            self.call_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.call_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("called", &[]);
-                }));
-            self.view_on_map_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+                }
+            ));
+            self.view_on_map_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("viewed-on-map", &[]);
-                }));
-            self.mute_button
-                .connect_is_active_notify(clone!(@weak obj => move |button| {
+                }
+            ));
+            self.mute_button.connect_is_active_notify(clone!(
+                #[weak]
+                obj,
+                move |button| {
                     let settings = Application::get().settings();
                     let peer = obj.peer();
 
@@ -69,7 +77,8 @@ mod imp {
                     } else {
                         settings.remove_muted_peer(&peer.name());
                     }
-                }));
+                }
+            ));
 
             let peer = obj.peer();
             peer.bind_property("name", &*obj, "title")
@@ -78,31 +87,53 @@ mod imp {
             peer.bind_property("icon-name", &*self.image, "icon-name")
                 .sync_create()
                 .build();
-            peer.connect_name_notify(clone!(@weak obj => move |_| {
-                obj.update_mute_button();
-            }));
-            peer.connect_location_notify(clone!(@weak obj => move |_| {
-                obj.update_subtitle();
-                obj.update_view_on_map_button_sensitivity();
-            }));
-            peer.connect_speed_notify(clone!(@weak obj => move |_| {
-                obj.update_subtitle();
-            }));
-            peer.connect_signal_quality_notify(clone!(@weak obj => move |_| {
-                obj.update_wireless_status_icon();
-            }));
+            peer.connect_name_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_mute_button();
+                }
+            ));
+            peer.connect_location_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_subtitle();
+                    obj.update_view_on_map_button_sensitivity();
+                }
+            ));
+            peer.connect_speed_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_subtitle();
+                }
+            ));
+            peer.connect_signal_quality_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_wireless_status_icon();
+                }
+            ));
 
             let app = Application::get();
 
-            app.gps()
-                .connect_location_notify(clone!(@weak obj => move |_| {
+            app.gps().connect_location_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.update_subtitle();
-                }));
+                }
+            ));
 
-            app.settings()
-                .connect_muted_peers_notify(clone!(@weak obj => move |_| {
+            app.settings().connect_muted_peers_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.update_mute_button();
-                }));
+                }
+            ));
 
             obj.update_subtitle();
             obj.update_view_on_map_button_sensitivity();

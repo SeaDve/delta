@@ -83,9 +83,13 @@ mod imp {
             let app = Application::get();
 
             let settings = app.settings();
-            settings.connect_muted_peers_notify(clone!(@weak obj => move |_| {
-                obj.update_muted_peers_row_items();
-            }));
+            settings.connect_muted_peers_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_muted_peers_row_items();
+                }
+            ));
 
             let icon_model = gtk::StringList::new(ICON_LIST);
             self.icon_flow_box.bind_model(Some(&icon_model), |item| {
@@ -110,8 +114,8 @@ mod imp {
                     .child_at_index(icon_name_index as i32)
                     .unwrap(),
             );
-            self.icon_flow_box.connect_selected_children_changed(
-                clone!(@weak self as obj => move |flow_box| {
+            self.icon_flow_box
+                .connect_selected_children_changed(|flow_box| {
                     let selected_children = flow_box.selected_children();
                     debug_assert_eq!(selected_children.len(), 1);
 
@@ -127,13 +131,15 @@ mod imp {
                     let app = Application::get();
                     let settings = app.settings();
                     settings.set_icon_name(icon_name);
-                }),
-            );
+                });
 
-            self.simulate_crash_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.simulate_crash_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("crash-simulate-requested", &[]);
-                }));
+                }
+            ));
             self.quit_button.connect_clicked(|_| {
                 Application::get().quit();
             });
@@ -163,27 +169,35 @@ mod imp {
             self.marker.set(marker).unwrap();
 
             let gps = app.gps();
-            gps.connect_location_notify(clone!(@weak obj => move |_| {
-                obj.update_marker_location();
-            }));
+            gps.connect_location_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_marker_location();
+                }
+            ));
 
             let gesture_click = gtk::GestureClick::builder()
                 .button(gdk::BUTTON_SECONDARY)
                 .build();
-            gesture_click.connect_pressed(clone!(@weak obj => move |_, _n_press, x, y| {
-                let imp = obj.imp();
+            gesture_click.connect_pressed(clone!(
+                #[weak]
+                obj,
+                move |_, _n_press, x, y| {
+                    let imp = obj.imp();
 
-                let viewport = imp.map.viewport().unwrap();
-                let (latitude, longitude) = viewport.widget_coords_to_location(&*imp.map, x, y);
+                    let viewport = imp.map.viewport().unwrap();
+                    let (latitude, longitude) = viewport.widget_coords_to_location(&*imp.map, x, y);
 
-                obj.emit_by_name::<()>(
-                    "location-override-requested",
-                    &[&Location {
-                        latitude,
-                        longitude,
-                    }],
-                );
-            }));
+                    obj.emit_by_name::<()>(
+                        "location-override-requested",
+                        &[&Location {
+                            latitude,
+                            longitude,
+                        }],
+                    );
+                }
+            ));
             self.map.add_controller(gesture_click);
 
             self.allowed_peers_row.set_selected(
@@ -199,20 +213,18 @@ mod imp {
                             .to_string()
                     }),
                 )));
-            self.allowed_peers_row.connect_selected_notify(
-                clone!(@weak self as obj => move |row| {
-                    let app = Application::get();
-                    let settings = app.settings();
+            self.allowed_peers_row.connect_selected_notify(|row| {
+                let app = Application::get();
+                let settings = app.settings();
 
-                    if let Some(ref item) = row.selected_item() {
-                        let value = item.downcast_ref::<adw::EnumListItem>().unwrap().value();
-                        settings.set_allowed_peers(AllowedPeers::try_from(value).unwrap());
-                    } else {
-                        tracing::warn!("Allowed peers row doesn't have a selected item");
-                        settings.set_allowed_peers(AllowedPeers::default());
-                    }
-                }),
-            );
+                if let Some(ref item) = row.selected_item() {
+                    let value = item.downcast_ref::<adw::EnumListItem>().unwrap().value();
+                    settings.set_allowed_peers(AllowedPeers::try_from(value).unwrap());
+                } else {
+                    tracing::warn!("Allowed peers row doesn't have a selected item");
+                    settings.set_allowed_peers(AllowedPeers::default());
+                }
+            });
 
             obj.update_marker_location();
             obj.update_muted_peers_row_items();
@@ -319,9 +331,15 @@ impl SettingsView {
                 .valign(gtk::Align::Center)
                 .build();
             unmute_button.add_css_class("flat");
-            unmute_button.connect_clicked(clone!(@strong peer_name, @weak settings => move |_| {
-                settings.remove_muted_peer(&peer_name);
-            }));
+            unmute_button.connect_clicked(clone!(
+                #[strong]
+                peer_name,
+                #[weak]
+                settings,
+                move |_| {
+                    settings.remove_muted_peer(&peer_name);
+                }
+            ));
             row.add_suffix(&unmute_button);
 
             imp.muted_peers_row.add_row(&row);

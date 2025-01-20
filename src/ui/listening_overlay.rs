@@ -43,10 +43,13 @@ mod imp {
 
             let obj = self.obj();
 
-            self.cancel_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.cancel_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("cancelled", &[]);
-                }));
+                }
+            ));
         }
 
         fn dispose(&self) {

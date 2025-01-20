@@ -87,23 +87,27 @@ mod imp {
 
             let obj = self.obj();
 
-            glib::spawn_future_local(clone!(@weak obj => async move {
-                loop {
-                    let signal_quality = match read_signal_quality().await {
-                        Ok(q) if q >= -50.0 => SignalQuality::Excellent,
-                        Ok(q) if q >= -67.0 => SignalQuality::Good,
-                        Ok(q) if q >= -70.0 => SignalQuality::Ok,
-                        Ok(q) if q >= -80.0 => SignalQuality::Weak,
-                        err => {
-                            tracing::trace!("Got signal quality of none: {:?}", err);
-                            SignalQuality::None
-                        },
-                    };
-                    obj.set_signal_quality(signal_quality);
+            glib::spawn_future_local(clone!(
+                #[weak]
+                obj,
+                async move {
+                    loop {
+                        let signal_quality = match read_signal_quality().await {
+                            Ok(q) if q >= -50.0 => SignalQuality::Excellent,
+                            Ok(q) if q >= -67.0 => SignalQuality::Good,
+                            Ok(q) if q >= -70.0 => SignalQuality::Ok,
+                            Ok(q) if q >= -80.0 => SignalQuality::Weak,
+                            err => {
+                                tracing::trace!("Got signal quality of none: {:?}", err);
+                                SignalQuality::None
+                            }
+                        };
+                        obj.set_signal_quality(signal_quality);
 
-                    glib::timeout_future(REFRESH_INTERVAL).await;
+                        glib::timeout_future(REFRESH_INTERVAL).await;
+                    }
                 }
-            }));
+            ));
         }
     }
 }

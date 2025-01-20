@@ -130,202 +130,277 @@ mod imp {
 
             let client = Client::new();
 
-            client.connect_alert_received(clone!(@weak obj => move |_, peer, alert_type| {
-                let imp = obj.imp();
-
-                let (text, alert_color) = match alert_type {
-                    AlertType::Sos => (
-                        format!("{} is in a life-threatening situation", peer.name()),
-                        colors::RED_3,
-                    ),
-                    AlertType::Hazard => (
-                        format!("{} is in a hazardous situation", peer.name()),
-                        colors::YELLOW_4,
-                    ),
-                    AlertType::Yielding => (format!("{} is yielding", peer.name()), colors::BLUE_3),
-                };
-
-                tts::speak(&text);
-
-                if imp
-                    .view_stack
-                    .visible_child()
-                    .is_some_and(|child| child == *imp.map_view)
-                {
-                    imp.map_view
-                        .play_alert_animation(peer, alert_type.blink_count(), alert_color);
-                }
-
-                let toast = adw::Toast::builder()
-                    .title(text)
-                    .priority(adw::ToastPriority::High)
-                    .build();
-
-                toast.connect_button_clicked(clone!(@weak obj, @weak peer => move |_| {
+            client.connect_alert_received(clone!(
+                #[weak]
+                obj,
+                move |_, peer, alert_type| {
                     let imp = obj.imp();
 
-                    let location = peer.location().unwrap();
-                    imp.map_view.go_to(&location);
+                    let (text, alert_color) = match alert_type {
+                        AlertType::Sos => (
+                            format!("{} is in a life-threatening situation", peer.name()),
+                            colors::RED_3,
+                        ),
+                        AlertType::Hazard => (
+                            format!("{} is in a hazardous situation", peer.name()),
+                            colors::YELLOW_4,
+                        ),
+                        AlertType::Yielding => {
+                            (format!("{} is yielding", peer.name()), colors::BLUE_3)
+                        }
+                    };
 
-                    imp.view_stack.set_visible_child(&*imp.map_view);
+                    tts::speak(&text);
 
-                    imp.map_view
-                        .play_alert_animation(&peer, alert_type.blink_count(), alert_color);
-                }));
-
-                let binding = peer
-                    .bind_property("location", &toast, "button-label")
-                    .transform_to(|_, location: Option<Location>| Some(location.map(|_| "View")))
-                    .sync_create()
-                    .build();
-                toast.connect_dismissed(move |_| {
-                    binding.unbind();
-                });
-
-                imp.toast_overlay.add_toast(toast);
-            }));
-            client.connect_active_call_notify(clone!(@weak obj => move |client| {
-                let imp = obj.imp();
-
-                if let Some(active_call) = client.active_call() {
-                    debug_assert!(matches!(
-                        active_call.state(),
-                        CallState::Incoming | CallState::Outgoing
-                    ));
-
-                    if active_call.state() == CallState::Incoming {
-                        tts::speak(format!("Incoming call from {}", active_call.peer().name()));
+                    if imp
+                        .view_stack
+                        .visible_child()
+                        .is_some_and(|child| child == *imp.map_view)
+                    {
+                        imp.map_view.play_alert_animation(
+                            peer,
+                            alert_type.blink_count(),
+                            alert_color,
+                        );
                     }
 
-                    imp.call_page.set_call(Some(active_call.clone()));
-                    imp.page_stack.set_visible_child(&*imp.call_page);
+                    let toast = adw::Toast::builder()
+                        .title(text)
+                        .priority(adw::ToastPriority::High)
+                        .build();
 
-                    active_call.connect_state_notify(clone!(@weak obj => move |call| {
-                        let imp = obj.imp();
+                    toast.connect_button_clicked(clone!(
+                        #[weak]
+                        obj,
+                        #[weak]
+                        peer,
+                        move |_| {
+                            let imp = obj.imp();
 
-                        match call.state() {
-                            CallState::Ended(reason) => {
-                                match reason {
-                                    CallEndReason::PeerInAnotherCall => {
-                                        imp.toast_overlay.add_toast(adw::Toast::new(&format!(
-                                            "{} is in another call",
-                                            call.peer().name()
-                                        )));
-                                    }
-                                    CallEndReason::PeerRejected => {
-                                        imp.toast_overlay.add_toast(adw::Toast::new(&format!(
-                                            "{} rejected the call",
-                                            call.peer().name()
-                                        )));
-                                    }
-                                    CallEndReason::PeerMuted => {
-                                        imp.toast_overlay.add_toast(adw::Toast::new(&format!(
-                                            "{} does not currently accept calls",
-                                            call.peer().name()
-                                        )));
-                                    }
-                                    CallEndReason::Other => {}
-                                }
+                            let location = peer.location().unwrap();
+                            imp.map_view.go_to(&location);
 
-                                imp.call_page.set_call(None::<Call>);
-                                imp.page_stack.set_visible_child(&*imp.main_page);
-                            }
-                            CallState::Ongoing => {}
-                            CallState::Init | CallState::Incoming | CallState::Outgoing => {
-                                unreachable!()
-                            }
+                            imp.view_stack.set_visible_child(&*imp.map_view);
+
+                            imp.map_view.play_alert_animation(
+                                &peer,
+                                alert_type.blink_count(),
+                                alert_color,
+                            );
                         }
-                    }));
-                } else {
-                    imp.call_page.set_call(None::<Call>);
-                    imp.page_stack.set_visible_child(&*imp.main_page);
-                }
-            }));
+                    ));
 
-            self.map_view
-                .connect_called(clone!(@weak client => move |_, peer| {
+                    let binding = peer
+                        .bind_property("location", &toast, "button-label")
+                        .transform_to(|_, location: Option<Location>| {
+                            Some(location.map(|_| "View"))
+                        })
+                        .sync_create()
+                        .build();
+                    toast.connect_dismissed(move |_| {
+                        binding.unbind();
+                    });
+
+                    imp.toast_overlay.add_toast(toast);
+                }
+            ));
+            client.connect_active_call_notify(clone!(
+                #[weak]
+                obj,
+                move |client| {
+                    let imp = obj.imp();
+
+                    if let Some(active_call) = client.active_call() {
+                        debug_assert!(matches!(
+                            active_call.state(),
+                            CallState::Incoming | CallState::Outgoing
+                        ));
+
+                        if active_call.state() == CallState::Incoming {
+                            tts::speak(format!("Incoming call from {}", active_call.peer().name()));
+                        }
+
+                        imp.call_page.set_call(Some(active_call.clone()));
+                        imp.page_stack.set_visible_child(&*imp.call_page);
+
+                        active_call.connect_state_notify(clone!(
+                            #[weak]
+                            obj,
+                            move |call| {
+                                let imp = obj.imp();
+
+                                match call.state() {
+                                    CallState::Ended(reason) => {
+                                        match reason {
+                                            CallEndReason::PeerInAnotherCall => {
+                                                imp.toast_overlay.add_toast(adw::Toast::new(
+                                                    &format!(
+                                                        "{} is in another call",
+                                                        call.peer().name()
+                                                    ),
+                                                ));
+                                            }
+                                            CallEndReason::PeerRejected => {
+                                                imp.toast_overlay.add_toast(adw::Toast::new(
+                                                    &format!(
+                                                        "{} rejected the call",
+                                                        call.peer().name()
+                                                    ),
+                                                ));
+                                            }
+                                            CallEndReason::PeerMuted => {
+                                                imp.toast_overlay.add_toast(adw::Toast::new(
+                                                    &format!(
+                                                        "{} does not currently accept calls",
+                                                        call.peer().name()
+                                                    ),
+                                                ));
+                                            }
+                                            CallEndReason::Other => {}
+                                        }
+
+                                        imp.call_page.set_call(None::<Call>);
+                                        imp.page_stack.set_visible_child(&*imp.main_page);
+                                    }
+                                    CallState::Ongoing => {}
+                                    CallState::Init | CallState::Incoming | CallState::Outgoing => {
+                                        unreachable!()
+                                    }
+                                }
+                            }
+                        ));
+                    } else {
+                        imp.call_page.set_call(None::<Call>);
+                        imp.page_stack.set_visible_child(&*imp.main_page);
+                    }
+                }
+            ));
+
+            self.map_view.connect_called(clone!(
+                #[weak]
+                client,
+                move |_, peer| {
                     let peer_id = *peer.id();
                     glib::spawn_future_local(async move {
                         if let Err(err) = client.call_request(peer_id).await {
                             tracing::error!("Failed to request call: {:?}", err);
                         }
                     });
-                }));
-            self.map_view
-                .connect_show_place_requested(clone!(@weak obj => move |_, place| {
+                }
+            ));
+            self.map_view.connect_show_place_requested(clone!(
+                #[weak]
+                obj,
+                move |_, place| {
                     let imp = obj.imp();
 
                     imp.place_page.set_place(Some(place));
                     imp.page_stack.set_visible_child(&*imp.place_page);
-                }));
+                }
+            ));
 
-            self.sos_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.sos_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.publish_alert(AlertType::Sos);
-                }));
-            self.hazard_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+                }
+            ));
+            self.hazard_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.publish_alert(AlertType::Hazard);
-                }));
-            self.yielding_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+                }
+            ));
+            self.yielding_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.publish_alert(AlertType::Yielding);
-                }));
+                }
+            ));
 
-            self.settings_view
-                .connect_crash_simulate_requested(clone!(@weak obj => move |_| {
+            self.settings_view.connect_crash_simulate_requested(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     let imp = obj.imp();
                     imp.crash_detector.simulate_crash();
-                }));
-            self.settings_view.connect_location_override_requested(
-                clone!(@weak obj => move |_, location| {
+                }
+            ));
+            self.settings_view
+                .connect_location_override_requested(move |_, location| {
                     let gps = Application::get().gps();
                     gps.override_location(Some(location.clone()));
-                }),
-            );
+                });
 
-            self.call_page
-                .connect_incoming_accepted(clone!(@weak client => move |_| {
+            self.call_page.connect_incoming_accepted(clone!(
+                #[weak]
+                client,
+                move |_| {
                     client.call_incoming_accept();
-                }));
-            self.call_page
-                .connect_incoming_declined(clone!(@weak client => move |_| {
+                }
+            ));
+            self.call_page.connect_incoming_declined(clone!(
+                #[weak]
+                client,
+                move |_| {
                     client.call_incoming_decline();
-                }));
-            self.call_page
-                .connect_outgoing_cancelled(clone!(@weak client => move |_| {
+                }
+            ));
+            self.call_page.connect_outgoing_cancelled(clone!(
+                #[weak]
+                client,
+                move |_| {
                     glib::spawn_future_local(async move {
                         if let Err(err) = client.call_outgoing_cancel().await {
                             tracing::error!("Failed to cancel outgoing call: {:?}", err);
                         }
                     });
-                }));
-            self.call_page
-                .connect_ongoing_ended(clone!(@weak client => move |_| {
+                }
+            ));
+            self.call_page.connect_ongoing_ended(clone!(
+                #[weak]
+                client,
+                move |_| {
                     if let Err(err) = client.call_ongoing_end() {
                         tracing::error!("Failed to end ongoing call: {:?}", err);
                     }
-                }));
+                }
+            ));
 
-            self.listening_overlay
-                .connect_cancelled(clone!(@weak obj => move |_| {
+            self.listening_overlay.connect_cancelled(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.reset_stt_segments();
-                }));
+                }
+            ));
 
-            self.crashed_page.connect_send_alert_requested(
-                clone!(@weak obj, @weak client => move |_| {
+            self.crashed_page.connect_send_alert_requested(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.handle_crashed_send_alert_requested();
-                }),
-            );
-            self.crashed_page
-                .connect_ignored(clone!(@weak obj => move |_| {
+                }
+            ));
+            self.crashed_page.connect_ignored(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.handle_crashed_ignored();
-                }));
+                }
+            ));
 
-            self.place_page.connect_done(clone!(@weak obj => move |_| {
-                let imp = obj.imp();
-                imp.page_stack.set_visible_child(&*imp.main_page);
-            }));
+            self.place_page.connect_done(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    let imp = obj.imp();
+                    imp.page_stack.set_visible_child(&*imp.main_page);
+                }
+            ));
 
             self.map_view.bind_model(client.peer_list());
 
@@ -340,69 +415,110 @@ mod imp {
 
             self.peer_list_box.bind_model(
                 Some(client.peer_list()),
-                clone!(@weak obj, @weak client => @default-panic, move |peer| {
-                    let peer = peer.downcast_ref::<Peer>().unwrap();
+                clone!(
+                    #[weak]
+                    obj,
+                    #[weak]
+                    client,
+                    #[upgrade_or_panic]
+                    move |peer| {
+                        let peer = peer.downcast_ref::<Peer>().unwrap();
 
-                    let row = PeerRow::new(peer);
-                    row.connect_called(clone!(@weak client => move |row| {
-                        let peer_id = *row.peer().id();
-                        glib::spawn_future_local(async move {
-                            if let Err(err) = client.call_request(peer_id).await  {
-                                tracing::error!("Failed to request call: {:?}", err);
+                        let row = PeerRow::new(peer);
+                        row.connect_called(clone!(
+                            #[weak]
+                            client,
+                            move |row| {
+                                let peer_id = *row.peer().id();
+                                glib::spawn_future_local(async move {
+                                    if let Err(err) = client.call_request(peer_id).await {
+                                        tracing::error!("Failed to request call: {:?}", err);
+                                    }
+                                });
                             }
-                        });
-                    }));
-                    row.connect_viewed_on_map(clone!(@weak obj => move |row| {
-                        let imp = obj.imp();
+                        ));
+                        row.connect_viewed_on_map(clone!(
+                            #[weak]
+                            obj,
+                            move |row| {
+                                let imp = obj.imp();
 
-                        let location = row.peer().location().unwrap();
-                        imp.map_view.go_to(&location);
+                                let location = row.peer().location().unwrap();
+                                imp.map_view.go_to(&location);
 
-                        imp.view_stack.set_visible_child(&*imp.map_view);
-                    }));
+                                imp.view_stack.set_visible_child(&*imp.map_view);
+                            }
+                        ));
 
-                    row.upcast()
-                }),
+                        row.upcast()
+                    }
+                ),
             );
 
-            self.stt
-                .connect_transcripted(clone!(@weak obj => move |_, message| {
+            self.stt.connect_transcripted(clone!(
+                #[weak]
+                obj,
+                move |_, message| {
                     obj.handle_stt_segment(message);
-                }));
+                }
+            ));
 
             self.client.set(client.clone()).unwrap();
 
-            self.crash_detector
-                .connect_crash_detected(clone!(@weak obj => move |_| {
+            self.crash_detector.connect_crash_detected(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.handle_crash_detected();
-                }));
+                }
+            ));
 
             let app = Application::get();
 
             let gps = app.gps();
-            gps.connect_fix_mode_notify(clone!(@weak obj => move |_| {
-                obj.update_gps_status_icon();
-            }));
-            gps.connect_location_notify(clone!(@weak obj => move |_| {
-                obj.update_location();
-            }));
+            gps.connect_fix_mode_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_gps_status_icon();
+                }
+            ));
+            gps.connect_location_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_location();
+                }
+            ));
             obj.update_gps_status_icon();
             obj.update_location();
 
             let settings = app.settings();
-            settings.connect_allowed_peers_notify(clone!(@weak obj => move |_| {
-                obj.update_allowed_peers_status_icon();
-            }));
-            settings.connect_icon_name_notify(clone!(@weak obj => move |_| {
-                obj.update_our_icon();
-            }));
+            settings.connect_allowed_peers_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_allowed_peers_status_icon();
+                }
+            ));
+            settings.connect_icon_name_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_our_icon();
+                }
+            ));
             obj.update_allowed_peers_status_icon();
             obj.update_our_icon();
 
             let wireless_info = app.wireless_info();
-            wireless_info.connect_signal_quality_notify(clone!(@weak obj => move |_| {
-                obj.update_wireless_status_icon();
-            }));
+            wireless_info.connect_signal_quality_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_wireless_status_icon();
+                }
+            ));
             obj.update_wireless_status_icon();
 
             self.listening_overlay_revealer
@@ -436,9 +552,13 @@ impl Window {
         let imp = self.imp();
         let client = imp.client.get().unwrap();
 
-        glib::spawn_future_local(clone!(@weak client => async move {
-            client.publish_alert(alert_type).await;
-        }));
+        glib::spawn_future_local(clone!(
+            #[weak]
+            client,
+            async move {
+                client.publish_alert(alert_type).await;
+            }
+        ));
 
         match Application::get().alert_led() {
             Ok(alert_led) => {
@@ -535,11 +655,15 @@ impl Window {
                     "cancel" => {
                         tts::speak("Cancelling call");
 
-                        glib::spawn_future_local(clone!(@weak client => async move {
-                            if let Err(err) = client.call_outgoing_cancel().await {
-                                tracing::error!("Failed to cancel outgoing call: {:?}", err);
+                        glib::spawn_future_local(clone!(
+                            #[weak]
+                            client,
+                            async move {
+                                if let Err(err) = client.call_outgoing_cancel().await {
+                                    tracing::error!("Failed to cancel outgoing call: {:?}", err);
+                                }
                             }
-                        }));
+                        ));
 
                         break;
                     }
@@ -603,11 +727,15 @@ impl Window {
                     if let Some(peer) = peer {
                         tts::speak(format!("Calling {}", peer.name()));
 
-                        glib::spawn_future_local(clone!(@weak client => async move {
-                            if let Err(err) = client.call_request(*peer.id()).await {
-                                tracing::error!("Failed to request call: {:?}", err);
+                        glib::spawn_future_local(clone!(
+                            #[weak]
+                            client,
+                            async move {
+                                if let Err(err) = client.call_request(*peer.id()).await {
+                                    tracing::error!("Failed to request call: {:?}", err);
+                                }
                             }
-                        }));
+                        ));
                     } else {
                         tts::speak(format!("Peer {} not found", peer_name));
                     }
@@ -648,13 +776,21 @@ impl Window {
                     if let Some(place_type) = place_type {
                         tts::speak(format!("Finding {}", place_type_str));
 
-                        glib::spawn_future_local(clone!(@weak self as obj => async move {
-                            let imp = obj.imp();
-                            if let Err(err) = imp.map_view.show_places_and_go_to_nearest(*place_type).await {
-                                tracing::warn!("Failed to show places: {:?}", err);
+                        glib::spawn_future_local(clone!(
+                            #[weak(rename_to = obj)]
+                            self,
+                            async move {
+                                let imp = obj.imp();
+                                if let Err(err) = imp
+                                    .map_view
+                                    .show_places_and_go_to_nearest(*place_type)
+                                    .await
+                                {
+                                    tracing::warn!("Failed to show places: {:?}", err);
+                                }
+                                imp.view_stack.set_visible_child(&*imp.map_view);
                             }
-                            imp.view_stack.set_visible_child(&*imp.map_view);
-                        }));
+                        ));
                     } else {
                         tts::speak("Unknown place type");
                     }
@@ -672,16 +808,20 @@ impl Window {
         // TODO Show timer on the crashed page
         let alert_auto_broadcast_source_id = glib::timeout_add_local_once(
             ALERT_AUTO_BROADCAST_WITHOUT_RESPONSE_DURATION,
-            clone!(@weak self as obj => move || {
-                let imp = obj.imp();
+            clone!(
+                #[weak(rename_to = obj)]
+                self,
+                move || {
+                    let imp = obj.imp();
 
-                let toast = adw::Toast::new("Broadcasted an automatic alert");
-                imp.toast_overlay.add_toast(toast);
+                    let toast = adw::Toast::new("Broadcasted an automatic alert");
+                    imp.toast_overlay.add_toast(toast);
 
-                tts::speak("Broadcasted an automatic alert");
+                    tts::speak("Broadcasted an automatic alert");
 
-                obj.handle_crashed_send_alert_requested();
-            }),
+                    obj.handle_crashed_send_alert_requested();
+                }
+            ),
         );
         imp.alert_auto_broadcast_source_id
             .replace(Some(alert_auto_broadcast_source_id));

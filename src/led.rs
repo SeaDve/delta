@@ -79,25 +79,30 @@ impl Led {
         let source_id = glib::timeout_add_local_full(
             interval,
             glib::Priority::DEFAULT_IDLE,
-            clone!(@weak inner => @default-panic, move || {
-                let mut inner_mut = inner.borrow_mut();
+            clone!(
+                #[weak]
+                inner,
+                #[upgrade_or_panic]
+                move || {
+                    let mut inner_mut = inner.borrow_mut();
 
-                if count % 2 == 0 {
-                    inner_mut.set_color(Some(color));
-                } else {
-                    inner_mut.set_color(None);
+                    if count % 2 == 0 {
+                        inner_mut.set_color(Some(color));
+                    } else {
+                        inner_mut.set_color(None);
+                    }
+
+                    count -= 1;
+
+                    if count == 0 {
+                        inner_mut.set_color(None);
+                        inner_mut.blink_source_id = None;
+                        return glib::ControlFlow::Break;
+                    }
+
+                    glib::ControlFlow::Continue
                 }
-
-                count -= 1;
-
-                if count == 0 {
-                    inner_mut.set_color(None);
-                    inner_mut.blink_source_id = None;
-                    return glib::ControlFlow::Break;
-                }
-
-                glib::ControlFlow::Continue
-            }),
+            ),
         );
         inner_mut.blink_source_id = Some(source_id);
     }

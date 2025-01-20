@@ -62,56 +62,85 @@ mod imp {
             let peer_signals = glib::SignalGroup::new::<Peer>();
             peer_signals.connect_notify_local(
                 Some("name"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_name_label();
-                    obj.update_mute_button();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_name_label();
+                        obj.update_mute_button();
+                    }
+                ),
             );
             peer_signals.connect_notify_local(
                 Some("location"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_location();
-                    obj.update_distance_label();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_location();
+                        obj.update_distance_label();
+                    }
+                ),
             );
             peer_signals.connect_notify_local(
                 Some("speed"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_speed_label();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_speed_label();
+                    }
+                ),
             );
             peer_signals.connect_notify_local(
                 Some("signal-quality"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_wireless_status_icon();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_wireless_status_icon();
+                    }
+                ),
             );
             peer_signals.connect_notify_local(
                 Some("icon-name"),
-                clone!(@weak obj => move |_, _| {
-                    obj.update_image_icon_name();
-                }),
+                clone!(
+                    #[weak]
+                    obj,
+                    move |_, _| {
+                        obj.update_image_icon_name();
+                    }
+                ),
             );
             self.peer_signals.set(peer_signals).unwrap();
 
             let gesture_click = gtk::GestureClick::new();
-            gesture_click.connect_released(clone!(@weak obj => move |_, _, _, _| {
-                let imp = obj.imp();
+            gesture_click.connect_released(clone!(
+                #[weak]
+                obj,
+                move |_, _, _, _| {
+                    let imp = obj.imp();
 
-                imp.popover.popup();
-            }));
+                    imp.popover.popup();
+                }
+            ));
             self.image.add_controller(gesture_click);
 
-            self.call_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.call_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     let imp = obj.imp();
 
                     imp.popover.popdown();
 
                     obj.emit_by_name::<()>("called", &[]);
-                }));
-            self.mute_button
-                .connect_is_active_notify(clone!(@weak obj => move |button| {
+                }
+            ));
+            self.mute_button.connect_is_active_notify(clone!(
+                #[weak]
+                obj,
+                move |button| {
                     let settings = Application::get().settings();
 
                     let Some(peer) = obj.peer() else {
@@ -123,19 +152,26 @@ mod imp {
                     } else {
                         settings.remove_muted_peer(&peer.name());
                     }
-                }));
+                }
+            ));
 
             let app = Application::get();
 
-            app.gps()
-                .connect_location_notify(clone!(@weak obj => move |_| {
+            app.gps().connect_location_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.update_distance_label();
-                }));
+                }
+            ));
 
-            app.settings()
-                .connect_muted_peers_notify(clone!(@weak obj => move |_| {
+            app.settings().connect_muted_peers_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.update_mute_button();
-                }));
+                }
+            ));
 
             obj.update_name_label();
             obj.update_distance_label();

@@ -56,16 +56,21 @@ mod imp {
 
             let obj = self.obj();
 
-            self.done_button
-                .connect_clicked(clone!(@weak obj => move |_| {
+            self.done_button.connect_clicked(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.emit_by_name::<()>("done", &[]);
-                }));
+                }
+            ));
 
-            Application::get()
-                .gps()
-                .connect_location_notify(clone!(@weak obj => move |_| {
+            Application::get().gps().connect_location_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
                     obj.update_distance_label();
-                }));
+                }
+            ));
 
             obj.update_distance_label();
         }
