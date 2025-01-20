@@ -125,7 +125,7 @@ mod imp {
             let obj = self.obj();
 
             if let Err(err) = obj.save() {
-                tracing::error!("Failed to save settings on dipose: {:?}", err);
+                tracing::error!("Failed to save settings on dispose: {:?}", err);
             }
         }
     }

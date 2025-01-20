@@ -101,7 +101,7 @@ impl PlaceType {
             Self::Cinema => "theater",
             Self::Telephone => "phone-oldschool",
             Self::Bank => "bank",
-            Self::Church => "non-religious-cemetary",
+            Self::Church => "non-religious-cemetery",
             Self::Police => "police-badge",
         };
 

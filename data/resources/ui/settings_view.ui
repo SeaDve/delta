@@ -76,7 +76,7 @@
                 </child>
                 <child>
                   <object class="AdwSpinRow" id="accel_impact_threshold_row">
-                    <property name="title">Crash Detector Treshold</property>
+                    <property name="title">Crash Detector Threshold</property>
                     <property name="subtitle">Magnitude threshold considered as a crash</property>
                     <property name="adjustment">
                       <object class="GtkAdjustment">
