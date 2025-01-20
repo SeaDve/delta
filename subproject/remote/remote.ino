@@ -5,10 +5,6 @@
 const char *WIFI_SSID = "HUAWEI-2.4G-E75z";
 const char *WIFI_PASSWORD = "JgY5wBGt";
 const int SERVER_PORT = 8888;
-ESP8266WebServer server(SERVER_PORT);
-
-const float DEFAULT_IMPACT_SENSITIVITY = 20.0;
-Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 
 const int LED1_RED_PIN = D5;
 const int LED1_GREEN_PIN = D6;
@@ -18,21 +14,12 @@ const int LED2_RED_PIN = D3;
 const int LED2_GREEN_PIN = D4;
 const int LED2_BLUE_PIN = D8;
 
+ESP8266WebServer server(SERVER_PORT);
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
+
 void server_handle_ping()
 {
   server.send(200, "text/plain", "pong");
-}
-
-float impact_sensitivity = DEFAULT_IMPACT_SENSITIVITY;
-
-void server_handle_set_impact_sensitivity()
-{
-  String raw_val = server.arg("sensitivity");
-  impact_sensitivity = raw_val.toFloat();
-  server.send(200);
-
-  Serial.print("Impact sensitivity set to ");
-  Serial.println(impact_sensitivity);
 }
 
 void server_handle_set_led_value()
@@ -65,6 +52,12 @@ void server_handle_set_led_value()
   }
 }
 
+void server_handle_get_accel_magnitude()
+{
+  float magnitude = accel_get_magnitude();
+  server.send(200, "text/plain", String(magnitude));
+}
+
 void server_setup()
 {
   WiFi.mode(WIFI_STA);
@@ -81,8 +74,8 @@ void server_setup()
   Serial.println(WiFi.localIP());
 
   server.on("/ping", server_handle_ping);
-  server.on("/setImpactSensitivity", server_handle_set_impact_sensitivity);
   server.on("/setLedValue", server_handle_set_led_value);
+  server.on("/getAccelMagnitude", server_handle_get_accel_magnitude);
 
   server.begin();
   Serial.println("Server started");
@@ -140,9 +133,4 @@ void setup()
 void loop()
 {
   server.handleClient();
-
-  if (accel_get_magnitude() > impact_sensitivity)
-  {
-    Serial.println("CRASHED");
-  }
 }
