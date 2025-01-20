@@ -75,6 +75,20 @@
                   </object>
                 </child>
                 <child>
+                  <object class="AdwSpinRow" id="accel_impact_threshold_row">
+                    <property name="title">Crash Detector Treshold</property>
+                    <property name="subtitle">Magnitude threshold considered as a crash</property>
+                    <property name="adjustment">
+                      <object class="GtkAdjustment">
+                        <property name="lower">1</property>
+                        <property name="upper">1000</property>
+                        <property name="step_increment">1</property>
+                        <property name="page_increment">10</property>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+                <child>
                   <object class="AdwActionRow">
                     <property name="title">Simulate Crash</property>
                     <property name="subtitle">Simulate a crash to test the crash detection feature</property>

@@ -72,6 +72,7 @@ struct Data {
     muted_peers: MutedPeers,
     icon_name: String,
     remote_ip_addr: String,
+    accel_impact_threshold: f32,
 }
 
 impl Default for Data {
@@ -81,6 +82,7 @@ impl Default for Data {
             muted_peers: MutedPeers::default(),
             icon_name: "driving-symbolic".into(),
             remote_ip_addr: "192.168.100.203".into(),
+            accel_impact_threshold: 20.0,
         }
     }
 }
@@ -95,6 +97,7 @@ mod imp {
         #[property(name = "muted-peers", get, set, member = muted_peers, type = MutedPeers)]
         #[property(name = "icon-name", get, set, member = icon_name, type = String)]
         #[property(name = "remote-ip-addr", get, set, member = remote_ip_addr, type = String)]
+        #[property(name = "accel-impact-threshold", get, set, member = accel_impact_threshold, type = f32)]
         pub(super) data: RefCell<Data>,
 
         pub(super) etag: RefCell<Option<glib::GString>>,
@@ -201,6 +204,11 @@ impl Settings {
                 }
             }
         };
+
+        tracing::debug!(
+            "Loaded settings from {}",
+            SETTINGS_FILE.path().unwrap().display()
+        );
 
         imp.data.replace(data);
         imp.etag.replace(etag);

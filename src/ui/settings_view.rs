@@ -44,6 +44,8 @@ mod imp {
         #[template_child]
         pub(super) remote_ip_addr_row: TemplateChild<adw::EntryRow>,
         #[template_child]
+        pub(super) accel_impact_threshold_row: TemplateChild<adw::SpinRow>,
+        #[template_child]
         pub(super) remote_status_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) simulate_crash_button: TemplateChild<gtk::Button>,
@@ -94,6 +96,15 @@ mod imp {
                     obj.update_muted_peers_row_items();
                 }
             ));
+            settings
+                .bind_property(
+                    "accel-impact-threshold",
+                    &*self.accel_impact_threshold_row,
+                    "value",
+                )
+                .bidirectional()
+                .sync_create()
+                .build();
 
             let remote = app.remote();
             remote.connect_status_notify(clone!(

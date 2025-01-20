@@ -10,13 +10,12 @@ use isahc::{config::Configurable, AsyncReadResponseExt, HttpClient};
 use once_cell::sync::Lazy;
 use url::Url;
 
-use crate::utils;
+use crate::{utils, Application};
 
 const PORT: u16 = 8888;
 
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(3);
 
-const ACCEL_IMPACT_SENSITIVITY: f32 = 20.0;
 const ACCEL_MAGNITUDE_REQUEST_INTERVAL: Duration = Duration::from_millis(100);
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -283,7 +282,7 @@ impl Remote {
             .await?
             .parse::<f32>()?;
 
-        if magnitude > ACCEL_IMPACT_SENSITIVITY {
+        if magnitude > Application::get().settings().accel_impact_threshold() {
             self.emit_by_name::<()>("crash-detected", &[]);
         }
 
