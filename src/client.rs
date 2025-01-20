@@ -443,16 +443,16 @@ impl Client {
 
         match event {
             SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
-                for (peer_id, _multiaddr) in list {
-                    tracing::trace!("mDNS discovered a new peer: {peer_id}");
+                for (peer_id, multiaddr) in list {
+                    tracing::trace!("mDNS discovered a new peer: {peer_id} at {multiaddr}");
 
                     swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
                     self.peer_list().insert(Peer::new(peer_id));
                 }
             }
             SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
-                for (peer_id, _multiaddr) in list {
-                    tracing::trace!("mDNS discover peer has expired: {peer_id}");
+                for (peer_id, multiaddr) in list {
+                    tracing::trace!("mDNS discover peer has expired: {peer_id} at {multiaddr}");
 
                     swarm
                         .behaviour_mut()
