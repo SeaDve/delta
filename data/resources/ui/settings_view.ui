@@ -58,6 +58,23 @@
               <object class="AdwExpanderRow">
                 <property name="title">Developer Options</property>
                 <child>
+                  <object class="AdwEntryRow" id="remote_ip_addr_row">
+                    <property name="title">Remote IP Address</property>
+                    <property name="show-apply-button">True</property>
+                    <child type="suffix">
+                      <object class="GtkLabel" id="remote_status_label">
+                        <property name="xalign">1.0</property>
+                        <property name="lines">2</property>
+                        <property name="ellipsize">end</property>
+                        <property name="max-width-chars">20</property>
+                        <style>
+                          <class name="caption"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
                   <object class="AdwActionRow">
                     <property name="title">Simulate Crash</property>
                     <property name="subtitle">Simulate a crash to test the crash detection feature</property>

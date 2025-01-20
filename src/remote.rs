@@ -6,13 +6,16 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
-use surf::Url;
+use isahc::{config::Configurable, AsyncReadResponseExt, HttpClient};
+use once_cell::sync::Lazy;
+use url::Url;
 
 use crate::utils;
 
 const PORT: u16 = 8888;
 
-// FIXME make configurable in dev settings
+const CLIENT_TIMEOUT: Duration = Duration::from_secs(3);
+
 const ACCEL_IMPACT_SENSITIVITY: f32 = 20.0;
 const ACCEL_MAGNITUDE_REQUEST_INTERVAL: Duration = Duration::from_millis(100);
 
@@ -30,6 +33,15 @@ pub enum LedColor {
     Yellow,
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, glib::Boxed)]
+#[boxed_type(name = "DeltaRemoteStatus")]
+pub enum RemoteStatus {
+    #[default]
+    Disconnected,
+    Connected,
+    Error(String),
+}
+
 mod imp {
     use std::{cell::RefCell, collections::HashMap, sync::OnceLock};
 
@@ -37,10 +49,13 @@ mod imp {
 
     use super::*;
 
-    #[derive(Default)]
+    #[derive(Default, glib::Properties)]
+    #[properties(wrapper_type = super::Remote)]
     pub struct Remote {
-        pub(super) ip_addr: RefCell<String>,
+        #[property(get)]
+        pub(super) status: RefCell<RemoteStatus>,
 
+        pub(super) ip_addr: RefCell<String>,
         pub(super) accel_magnitude_request_handle: RefCell<Option<glib::JoinHandle<()>>>,
         pub(super) led_blink_handle: RefCell<HashMap<LedId, glib::JoinHandle<()>>>,
     }
@@ -51,6 +66,7 @@ mod imp {
         type Type = super::Remote;
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for Remote {
         fn constructed(&self) {
             self.parent_constructed();
@@ -119,6 +135,8 @@ impl Remote {
         let imp = self.imp();
 
         imp.ip_addr.replace(ip_addr);
+
+        self.set_status(RemoteStatus::Disconnected);
     }
 
     pub async fn blink_led(
@@ -173,6 +191,17 @@ impl Remote {
         Ok(())
     }
 
+    fn set_status(&self, status: RemoteStatus) {
+        let imp = self.imp();
+
+        if status == self.status() {
+            return;
+        }
+
+        imp.status.replace(status);
+        self.notify_status();
+    }
+
     async fn blink_led_inner(
         &self,
         id: LedId,
@@ -205,7 +234,18 @@ impl Remote {
         Ok(())
     }
 
-    async fn http_get(&self, path: &str, query: Option<&str>) -> Result<surf::Response> {
+    async fn http_get(
+        &self,
+        path: &str,
+        query: Option<&str>,
+    ) -> Result<isahc::Response<isahc::AsyncBody>> {
+        static HTTP_CLIENT: Lazy<HttpClient> = Lazy::new(|| {
+            HttpClient::builder()
+                .timeout(CLIENT_TIMEOUT)
+                .build()
+                .unwrap()
+        });
+
         let imp = self.imp();
 
         let raw_uri = format!("http://{}:{PORT}/{path}", imp.ip_addr.borrow());
@@ -215,10 +255,16 @@ impl Remote {
             .with_context(|| format!("Failed to parse URI: {}", raw_uri))?;
         uri.set_query(query);
 
-        let response = surf::RequestBuilder::new(surf::http::Method::Get, uri)
-            .send()
-            .await
-            .map_err(|err| err.into_inner())?;
+        let res = HTTP_CLIENT.get_async(uri.as_str()).await;
+
+        let status = if let Err(err) = &res {
+            RemoteStatus::Error(err.to_string())
+        } else {
+            RemoteStatus::Connected
+        };
+        self.set_status(status);
+
+        let response = res?;
 
         ensure!(
             response.status().is_success(),
@@ -233,9 +279,8 @@ impl Remote {
         let magnitude = self
             .http_get("getAccelMagnitude", None)
             .await?
-            .body_string()
-            .await
-            .map_err(|err| err.into_inner())?
+            .text()
+            .await?
             .parse::<f32>()?;
 
         if magnitude > ACCEL_IMPACT_SENSITIVITY {

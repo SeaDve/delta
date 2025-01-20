@@ -64,11 +64,18 @@ mod imp {
                     obj.update_allowed_peers_led_color();
                 }
             ));
+            self.settings.connect_remote_ip_addr_notify(clone!(
+                #[weak]
+                obj,
+                move |settings| {
+                    let ip_addr = settings.remote_ip_addr();
+                    obj.remote().set_ip_addr(ip_addr);
+                }
+            ));
 
             obj.update_allowed_peers_led_color();
 
-            // FIXME make this configurable
-            let remote = Remote::new("192.168.100.203".into());
+            let remote = Remote::new(self.settings.remote_ip_addr());
             self.remote.set(remote).unwrap();
         }
 

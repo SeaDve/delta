@@ -8,7 +8,7 @@ use gtk::{
 };
 use shumate::prelude::*;
 
-use crate::{location::Location, settings::AllowedPeers, Application};
+use crate::{location::Location, remote::RemoteStatus, settings::AllowedPeers, Application};
 
 const DEFAULT_MAP_ZOOM_LEVEL: f64 = 16.0;
 const ICON_LIST: &[&str] = &[
@@ -41,6 +41,10 @@ mod imp {
         pub(super) allowed_peers_model: TemplateChild<adw::EnumListModel>,
         #[template_child]
         pub(super) muted_peers_row: TemplateChild<adw::ExpanderRow>,
+        #[template_child]
+        pub(super) remote_ip_addr_row: TemplateChild<adw::EntryRow>,
+        #[template_child]
+        pub(super) remote_status_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) simulate_crash_button: TemplateChild<gtk::Button>,
         #[template_child]
@@ -88,6 +92,15 @@ mod imp {
                 obj,
                 move |_| {
                     obj.update_muted_peers_row_items();
+                }
+            ));
+
+            let remote = app.remote();
+            remote.connect_status_notify(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.update_remote_status_label();
                 }
             ));
 
@@ -140,6 +153,12 @@ mod imp {
                     obj.emit_by_name::<()>("crash-simulate-requested", &[]);
                 }
             ));
+            self.remote_ip_addr_row.set_text(&settings.remote_ip_addr());
+            self.remote_ip_addr_row.connect_apply(|entry| {
+                Application::get()
+                    .settings()
+                    .set_remote_ip_addr(entry.text().trim());
+            });
             self.quit_button.connect_clicked(|_| {
                 Application::get().quit();
             });
@@ -228,6 +247,7 @@ mod imp {
 
             obj.update_marker_location();
             obj.update_muted_peers_row_items();
+            obj.update_remote_status_label();
         }
 
         fn dispose(&self) {
@@ -349,5 +369,27 @@ impl SettingsView {
 
         imp.muted_peers_row
             .set_enable_expansion(!muted_peers.is_empty());
+    }
+
+    fn update_remote_status_label(&self) {
+        let imp = self.imp();
+
+        match Application::get().remote().status() {
+            RemoteStatus::Disconnected => {
+                imp.remote_status_label.set_text("X");
+                imp.remote_status_label.add_css_class("error");
+                imp.remote_status_label.remove_css_class("success");
+            }
+            RemoteStatus::Connected => {
+                imp.remote_status_label.set_text("OK");
+                imp.remote_status_label.add_css_class("success");
+                imp.remote_status_label.remove_css_class("error");
+            }
+            RemoteStatus::Error(error) => {
+                imp.remote_status_label.set_text(&error);
+                imp.remote_status_label.add_css_class("error");
+                imp.remote_status_label.remove_css_class("success");
+            }
+        }
     }
 }

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashSet, fmt};
 
-use anyhow::{anyhow, Error, Result};
+use anyhow::Result;
 use gtk::{
     gio,
     glib::{self, translate::TryFromGlib},
@@ -38,10 +38,10 @@ impl fmt::Display for AllowedPeers {
 }
 
 impl TryFrom<i32> for AllowedPeers {
-    type Error = Error;
+    type Error = i32;
 
-    fn try_from(val: i32) -> Result<Self> {
-        unsafe { Self::try_from_glib(val) }.map_err(|_| anyhow!("Invalid value `{}`", val))
+    fn try_from(val: i32) -> Result<Self, Self::Error> {
+        unsafe { Self::try_from_glib(val) }
     }
 }
 
@@ -71,6 +71,7 @@ struct Data {
     allowed_peers: AllowedPeers,
     muted_peers: MutedPeers,
     icon_name: String,
+    remote_ip_addr: String,
 }
 
 impl Default for Data {
@@ -79,6 +80,7 @@ impl Default for Data {
             allowed_peers: AllowedPeers::default(),
             muted_peers: MutedPeers::default(),
             icon_name: "driving-symbolic".into(),
+            remote_ip_addr: "192.168.100.203".into(),
         }
     }
 }
@@ -92,6 +94,7 @@ mod imp {
         #[property(name = "allowed-peers", get, set, member = allowed_peers, type = AllowedPeers, builder(AllowedPeers::default()))]
         #[property(name = "muted-peers", get, set, member = muted_peers, type = MutedPeers)]
         #[property(name = "icon-name", get, set, member = icon_name, type = String)]
+        #[property(name = "remote-ip-addr", get, set, member = remote_ip_addr, type = String)]
         pub(super) data: RefCell<Data>,
 
         pub(super) etag: RefCell<Option<glib::GString>>,
