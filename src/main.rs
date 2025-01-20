@@ -36,7 +36,7 @@ fn main() -> glib::ExitCode {
 
     gst::init().unwrap();
 
-    let data = gvdb::gresource::GResourceBuilder::from_directory(
+    let data = gvdb::gresource::BundleBuilder::from_directory(
         GRESOURCE_PREFIX,
         Path::new("data/resources/"),
         true,
