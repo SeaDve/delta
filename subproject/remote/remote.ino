@@ -10,6 +10,14 @@ ESP8266WebServer server(SERVER_PORT);
 const float DEFAULT_IMPACT_SENSITIVITY = 20.0;
 Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified(12345);
 
+const int LED1_RED_PIN = D5;
+const int LED1_GREEN_PIN = D6;
+const int LED1_BLUE_PIN = D7;
+
+const int LED2_RED_PIN = D3;
+const int LED2_GREEN_PIN = D4;
+const int LED2_BLUE_PIN = D8;
+
 void server_handle_ping()
 {
   server.send(200, "text/plain", "pong");
@@ -25,6 +33,36 @@ void server_handle_set_impact_sensitivity()
 
   Serial.print("Impact sensitivity set to ");
   Serial.println(impact_sensitivity);
+}
+
+void server_handle_set_led_value()
+{
+  String id = server.arg("id");
+  String red_raw_value = server.arg("r");
+  String green_raw_value = server.arg("g");
+  String blue_raw_value = server.arg("b");
+
+  int red_value = red_raw_value.toInt();
+  int green_value = green_raw_value.toInt();
+  int blue_value = blue_raw_value.toInt();
+
+  switch (id.toInt())
+  {
+  case 1:
+    digitalWrite(LED1_RED_PIN, red_value);
+    digitalWrite(LED1_GREEN_PIN, green_value);
+    digitalWrite(LED1_BLUE_PIN, blue_value);
+    server.send(200);
+    break;
+  case 2:
+    digitalWrite(LED2_RED_PIN, red_value);
+    digitalWrite(LED2_GREEN_PIN, green_value);
+    digitalWrite(LED2_BLUE_PIN, blue_value);
+    server.send(200);
+    break;
+  default:
+    server.send(400, "text/plain", "invalid id");
+  }
 }
 
 void server_setup()
@@ -44,9 +82,21 @@ void server_setup()
 
   server.on("/ping", server_handle_ping);
   server.on("/setImpactSensitivity", server_handle_set_impact_sensitivity);
+  server.on("/setLedValue", server_handle_set_led_value);
 
   server.begin();
   Serial.println("Server started");
+}
+
+void led_setup()
+{
+  pinMode(LED1_RED_PIN, OUTPUT);
+  pinMode(LED1_GREEN_PIN, OUTPUT);
+  pinMode(LED1_BLUE_PIN, OUTPUT);
+
+  pinMode(LED2_RED_PIN, OUTPUT);
+  pinMode(LED2_GREEN_PIN, OUTPUT);
+  pinMode(LED2_BLUE_PIN, OUTPUT);
 }
 
 float prev_accel_x;
@@ -83,6 +133,7 @@ void setup()
   Serial.begin(9600);
 
   server_setup();
+  led_setup();
   accel_setup();
 }
 
