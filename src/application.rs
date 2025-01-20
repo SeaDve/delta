@@ -7,20 +7,15 @@ use gtk::{
 
 use crate::{
     gps::Gps,
-    led::{Color, Led},
+    remote::{LedColor, LedId, Remote},
     settings::{AllowedPeers, Settings},
     ui::Window,
     wireless_info::WirelessInfo,
     APP_ID, GRESOURCE_PREFIX,
 };
 
-const ALERT_LED_RED_PIN: u8 = 5;
-const ALERT_LED_GREEN_PIN: u8 = 6;
-const ALERT_LED_BLUE_PIN: u8 = 26;
-
-const ALLOWED_PEERS_LED_RED_PIN: u8 = 17;
-const ALLOWED_PEERS_LED_GREEN_PIN: u8 = 27;
-const ALLOWED_PEERS_LED_BLUE_PIN: u8 = 22;
+pub const ALLOWED_PEERS_LED_ID: LedId = LedId::_1;
+pub const ALERT_LED_ID: LedId = LedId::_2;
 
 mod imp {
     use once_cell::unsync::OnceCell;
@@ -33,8 +28,7 @@ mod imp {
         pub(super) settings: Settings,
         pub(super) wireless_info: WirelessInfo,
 
-        pub(super) allowed_peers_led: OnceCell<Led>,
-        pub(super) alert_led: OnceCell<Led>,
+        pub(super) remote: OnceCell<Remote>,
     }
 
     #[glib::object_subclass]
@@ -72,6 +66,10 @@ mod imp {
             ));
 
             obj.update_allowed_peers_led_color();
+
+            // FIXME make this configurable
+            let remote = Remote::new("192.168.100.203".into());
+            self.remote.set(remote).unwrap();
         }
 
         fn shutdown(&self) {
@@ -128,10 +126,8 @@ impl Application {
         self.imp().wireless_info.clone()
     }
 
-    pub fn alert_led(&self) -> Result<&Led> {
-        self.imp().alert_led.get_or_try_init(|| {
-            Led::new(ALERT_LED_RED_PIN, ALERT_LED_GREEN_PIN, ALERT_LED_BLUE_PIN)
-        })
+    pub fn remote(&self) -> Remote {
+        self.imp().remote.get().unwrap().clone()
     }
 
     fn window(&self) -> Window {
@@ -140,24 +136,29 @@ impl Application {
     }
 
     fn update_allowed_peers_led_color(&self) {
-        let imp = self.imp();
-
-        match imp.allowed_peers_led.get_or_try_init(|| {
-            Led::new(
-                ALLOWED_PEERS_LED_RED_PIN,
-                ALLOWED_PEERS_LED_GREEN_PIN,
-                ALLOWED_PEERS_LED_BLUE_PIN,
-            )
-        }) {
-            Ok(led) => {
-                led.set_color(match self.settings().allowed_peers() {
-                    AllowedPeers::ExceptMuted => Some(Color::Blue),
-                    AllowedPeers::All => Some(Color::Green),
-                    AllowedPeers::None => None,
-                });
+        glib::spawn_future_local(clone!(
+            #[weak(rename_to = obj)]
+            self,
+            async move {
+                if let Err(err) = obj.update_allowed_peers_led_color_inner().await {
+                    tracing::error!("Failed to update allowed peers LED color: {:?}", err);
+                }
             }
-            Err(err) => tracing::error!("Failed to get LED: {:?}", err),
-        }
+        ));
+    }
+
+    async fn update_allowed_peers_led_color_inner(&self) -> Result<()> {
+        let color = match self.settings().allowed_peers() {
+            AllowedPeers::ExceptMuted => Some(LedColor::Blue),
+            AllowedPeers::All => Some(LedColor::Green),
+            AllowedPeers::None => None,
+        };
+
+        self.remote()
+            .set_led_color(ALLOWED_PEERS_LED_ID, color)
+            .await?;
+
+        Ok(())
     }
 
     fn setup_actions(&self) {

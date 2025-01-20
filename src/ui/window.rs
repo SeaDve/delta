@@ -6,16 +6,15 @@ use gst::prelude::*;
 use gtk::glib::{self, clone};
 
 use crate::{
-    application::Application,
+    application::{Application, ALERT_LED_ID},
     call::{Call, CallEndReason, CallState},
     client::{AlertType, Client},
     colors,
-    crash_detector::CrashDetector,
     gps::FixMode,
-    led::Color,
     location::Location,
     peer::Peer,
     place_finder::PlaceType,
+    remote::LedColor,
     settings::AllowedPeers,
     stt::Stt,
     tts,
@@ -83,7 +82,6 @@ mod imp {
         pub(super) stt_segments: RefCell<String>,
         pub(super) stt_is_accepting_segments: Cell<bool>,
 
-        pub(super) crash_detector: CrashDetector,
         pub(super) alert_auto_broadcast_source_id: RefCell<Option<glib::SourceId>>,
     }
 
@@ -321,14 +319,10 @@ mod imp {
                 }
             ));
 
-            self.settings_view.connect_crash_simulate_requested(clone!(
-                #[weak]
-                obj,
-                move |_| {
-                    let imp = obj.imp();
-                    imp.crash_detector.simulate_crash();
-                }
-            ));
+            self.settings_view.connect_crash_simulate_requested(|_| {
+                let remote = Application::get().remote();
+                remote.simulate_crashed();
+            });
             self.settings_view
                 .connect_location_override_requested(move |_, location| {
                     let gps = Application::get().gps();
@@ -465,14 +459,6 @@ mod imp {
 
             self.client.set(client.clone()).unwrap();
 
-            self.crash_detector.connect_crash_detected(clone!(
-                #[weak]
-                obj,
-                move |_| {
-                    obj.handle_crash_detected();
-                }
-            ));
-
             let app = Application::get();
 
             let gps = app.gps();
@@ -521,6 +507,15 @@ mod imp {
             ));
             obj.update_wireless_status_icon();
 
+            let remote = app.remote();
+            remote.connect_crash_detected(clone!(
+                #[weak]
+                obj,
+                move |_| {
+                    obj.handle_crash_detected();
+                }
+            ));
+
             self.listening_overlay_revealer
                 .connect_child_revealed_notify(move |revealer| {
                     if !revealer.reveals_child() && !revealer.is_child_revealed() {
@@ -552,27 +547,32 @@ impl Window {
         let imp = self.imp();
         let client = imp.client.get().unwrap();
 
+        let color = match alert_type {
+            AlertType::Sos => LedColor::Red,
+            AlertType::Hazard => LedColor::Yellow,
+            AlertType::Yielding => LedColor::Blue,
+        };
+
         glib::spawn_future_local(clone!(
             #[weak]
             client,
             async move {
                 client.publish_alert(alert_type).await;
+
+                if let Err(err) = Application::get()
+                    .remote()
+                    .blink_led(
+                        ALERT_LED_ID,
+                        color,
+                        alert_type.blink_count(),
+                        ALERT_LED_BLINK_INTERVAL,
+                    )
+                    .await
+                {
+                    tracing::error!("Failed to blink LED: {:?}", err);
+                }
             }
         ));
-
-        match Application::get().alert_led() {
-            Ok(alert_led) => {
-                let color = match alert_type {
-                    AlertType::Sos => Color::Red,
-                    AlertType::Hazard => Color::Yellow,
-                    AlertType::Yielding => Color::Blue,
-                };
-                alert_led.blink(color, alert_type.blink_count(), ALERT_LED_BLINK_INTERVAL);
-            }
-            Err(err) => {
-                tracing::error!("Failed to get alert LED: {:?}", err);
-            }
-        }
     }
 
     fn reset_stt_segments(&self) {
