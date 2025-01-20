@@ -324,7 +324,7 @@ impl MapView {
     }
 
     pub fn location(&self) -> Option<Location> {
-        self.imp().location.borrow().clone()
+        *self.imp().location.borrow()
     }
 
     pub fn go_to(&self, location: &Location) {

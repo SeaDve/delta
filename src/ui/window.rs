@@ -317,7 +317,7 @@ mod imp {
             self.settings_view
                 .connect_location_override_requested(move |_, location| {
                     let gps = Application::get().gps();
-                    gps.override_location(Some(location.clone()));
+                    gps.override_location(Some(*location));
                 });
 
             self.call_page.connect_incoming_accepted(clone!(

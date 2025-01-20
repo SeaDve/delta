@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 const EARTH_RADIUS: f64 = 6_378_137.0;
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, glib::Boxed)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize, glib::Boxed)]
 #[boxed_type(name = "DeltaLocation", nullable)]
 pub struct Location {
     pub latitude: f64,

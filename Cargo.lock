@@ -1965,6 +1965,8 @@ dependencies = [
  "mime",
  "once_cell",
  "polling 2.8.0",
+ "serde",
+ "serde_json",
  "slab",
  "sluice",
  "tracing",

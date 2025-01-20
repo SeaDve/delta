@@ -398,7 +398,7 @@ impl Client {
         ));
 
         loop {
-            futures_util::select! {
+            select! {
                 command = command_rx.recv().fuse() => {
                     if let Err(err) = self.handle_command(&mut swarm, &topic, command?) {
                         tracing::error!("Failed to handle command: {:?}", err);

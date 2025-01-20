@@ -1,4 +1,4 @@
-use std::{io, process::Command as StdCommand};
+use std::{io, process::Command as StdCommand, time::Duration};
 
 use anyhow::{bail, Result};
 use async_process::{Child, Command, Stdio};
@@ -11,11 +11,13 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
+use isahc::AsyncReadResponseExt;
 use serde::Deserialize;
 
 use crate::{config, location::Location};
 
-const DEVICE_PATH: &str = "/dev/ttyAMA0";
+const GPSD_DEVICE_PATH: &str = "/dev/ttyAMA0";
+const GPSD_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, glib::Enum)]
 #[enum_type(name = "DeltaFixMode")]
@@ -72,9 +74,26 @@ mod imp {
             if config::is_gps_enabled() {
                 tracing::debug!("GPS is enabled, initializing GPS");
 
-                if let Err(err) = obj.init() {
-                    tracing::error!("Failed to initialize GPS: {:?}", err);
-                }
+                glib::spawn_future_local(clone!(
+                    #[weak]
+                    obj,
+                    async move {
+                        if let Err(err) = obj.init_gpsd().await {
+                            tracing::error!("Failed to initialize GPSD: {:?}", err);
+
+                            match ip_location().await {
+                                Ok(location) => {
+                                    obj.set_location(Some(location));
+
+                                    tracing::debug!("Got location from IP: {:?}", location);
+                                }
+                                Err(err) => {
+                                    tracing::error!("Failed to get location from IP: {:?}", err);
+                                }
+                            }
+                        }
+                    }
+                ));
             }
 
             if let Some(location) = config::location() {
@@ -105,7 +124,7 @@ impl Gps {
         self.set_location(location);
     }
 
-    fn init(&self) -> Result<()> {
+    async fn init_gpsd(&self) -> Result<()> {
         ensure_gpsd()?;
 
         let mut child = Command::new("gpspipe")
@@ -116,7 +135,7 @@ impl Gps {
         let stdout = child.stdout.take().unwrap();
         let reader = BufReader::new(stdout);
 
-        glib::spawn_future_local(clone!(
+        let handle = glib::spawn_future_local(clone!(
             #[weak(rename_to = obj)]
             self,
             async move {
@@ -129,6 +148,14 @@ impl Gps {
                 }
             }
         ));
+
+        glib::timeout_future(GPSD_TIMEOUT).await;
+
+        if self.location().is_none() {
+            handle.abort();
+
+            bail!("Failed to get location from device");
+        }
 
         Ok(())
     }
@@ -218,11 +245,32 @@ impl Default for Gps {
 }
 
 fn ensure_gpsd() -> Result<()> {
-    let status = StdCommand::new("gpsd").arg(DEVICE_PATH).spawn()?.wait()?;
+    let status = StdCommand::new("gpsd")
+        .arg(GPSD_DEVICE_PATH)
+        .spawn()?
+        .wait()?;
 
     if !status.success() {
         bail!("Failed to start gpsd: {:?}", status.code());
     }
 
     Ok(())
+}
+
+async fn ip_location() -> Result<Location> {
+    #[derive(Deserialize)]
+    struct Response {
+        lat: f64,
+        lon: f64,
+    }
+
+    let response = isahc::get_async("http://ip-api.com/json?fields=lat,lon")
+        .await?
+        .json::<Response>()
+        .await?;
+
+    Ok(Location {
+        latitude: response.lat,
+        longitude: response.lon,
+    })
 }
