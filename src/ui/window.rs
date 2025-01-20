@@ -938,7 +938,10 @@ fn play_quick_tone() -> Result<()> {
 
     playbin.set_property(
         "uri",
-        format!("resource://{}digital-quick-tone.wav", GRESOURCE_PREFIX),
+        format!(
+            "resource://{}/sounds/digital-quick-tone.wav",
+            GRESOURCE_PREFIX
+        ),
     );
 
     playbin.set_state(gst::State::Playing)?;
