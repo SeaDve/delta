@@ -476,7 +476,7 @@ impl Window {
             .map(|s| s.trim_matches(|c: char| c.is_ascii_punctuation()))
             .collect::<Vec<_>>();
 
-        let is_random_noise = segment.trim().starts_with(|c: char| c == '[' || c == '(');
+        let is_random_noise = segment.trim().starts_with(['[', '(']);
         if is_random_noise && !imp.stt_segments.borrow().is_empty() {
             self.handle_voice_command(imp.stt_segments.borrow().as_str());
             self.reset_stt_segments();
