@@ -12,7 +12,7 @@ mod imp {
 
     #[derive(Default, glib::Properties, gtk::CompositeTemplate)]
     #[properties(wrapper_type = super::PeerRow)]
-    #[template(file = "peer_row.ui")]
+    #[template(resource = "/io/github/seadve/Delta/ui/peer_row.ui")]
     pub struct PeerRow {
         #[property(get, set, construct_only)]
         pub(super) peer: OnceCell<Peer>,

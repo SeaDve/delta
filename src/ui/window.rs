@@ -36,7 +36,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, gtk::CompositeTemplate)]
-    #[template(file = "window.ui")]
+    #[template(resource = "/io/github/seadve/Delta/ui/window.ui")]
     pub struct Window {
         #[template_child]
         pub(super) toast_overlay: TemplateChild<adw::ToastOverlay>,

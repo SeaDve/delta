@@ -12,7 +12,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, gtk::CompositeTemplate)]
-    #[template(file = "crashed_page.ui")]
+    #[template(resource = "/io/github/seadve/Delta/ui/crashed_page.ui")]
     pub struct CrashedPage {
         #[template_child]
         pub(super) status_page: TemplateChild<adw::StatusPage>,

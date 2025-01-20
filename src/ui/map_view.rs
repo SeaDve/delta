@@ -31,7 +31,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, gtk::CompositeTemplate)]
-    #[template(file = "map_view.ui")]
+    #[template(resource = "/io/github/seadve/Delta/ui/map_view.ui")]
     pub struct MapView {
         #[template_child]
         pub(super) hbox: TemplateChild<gtk::Box>, // Unused

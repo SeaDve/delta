@@ -29,7 +29,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, gtk::CompositeTemplate)]
-    #[template(file = "settings_view.ui")]
+    #[template(resource = "/io/github/seadve/Delta/ui/settings_view.ui")]
     pub struct SettingsView {
         #[template_child]
         pub(super) page: TemplateChild<adw::PreferencesPage>, // Unused

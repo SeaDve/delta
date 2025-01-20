@@ -17,7 +17,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, gtk::CompositeTemplate)]
-    #[template(file = "place_page.ui")]
+    #[template(resource = "/io/github/seadve/Delta/ui/place_page.ui")]
     pub struct PlacePage {
         #[template_child]
         pub(super) hbox: TemplateChild<gtk::Box>, // Unused

@@ -12,7 +12,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, gtk::CompositeTemplate)]
-    #[template(file = "listening_overlay.ui")]
+    #[template(resource = "/io/github/seadve/Delta/ui/listening_overlay.ui")]
     pub struct ListeningOverlay {
         #[template_child]
         pub(super) status_page: TemplateChild<adw::StatusPage>, // Unused

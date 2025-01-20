@@ -22,7 +22,7 @@ mod imp {
 
     #[derive(Default, glib::Properties, gtk::CompositeTemplate)]
     #[properties(wrapper_type = super::CallPage)]
-    #[template(file = "call_page.ui")]
+    #[template(resource = "/io/github/seadve/Delta/ui/call_page.ui")]
     pub struct CallPage {
         #[property(get, set = Self::set_call, explicit_notify, nullable)]
         pub(super) call: RefCell<Option<Call>>,

@@ -15,7 +15,7 @@ mod imp {
     use super::*;
 
     #[derive(Default, gtk::CompositeTemplate)]
-    #[template(file = "peer_marker.ui")]
+    #[template(resource = "/io/github/seadve/Delta/ui/peer_marker.ui")]
     pub struct PeerMarker {
         #[template_child]
         pub(super) image: TemplateChild<gtk::Image>,

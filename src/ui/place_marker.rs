@@ -12,7 +12,7 @@ mod imp {
 
     #[derive(Default, glib::Properties, gtk::CompositeTemplate)]
     #[properties(wrapper_type = super::PlaceMarker)]
-    #[template(file = "place_marker.ui")]
+    #[template(resource = "/io/github/seadve/Delta/ui/place_marker.ui")]
     pub struct PlaceMarker {
         #[property(get, set, construct_only)]
         pub(super) place: OnceCell<Place>,
