@@ -110,15 +110,6 @@ mod imp {
                 Ok(device_info) => {
                     tracing::debug!("Running on {}", device_info.model());
 
-                    let provider = gtk::CssProvider::new();
-                    provider.load_from_data("window { padding: 0; box-shadow: none; }");
-
-                    gtk::style_context_add_provider_for_display(
-                        &obj.display(),
-                        &provider,
-                        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-                    );
-
                     obj.fullscreen();
                 }
                 Err(err) => {
